@@ -16,7 +16,21 @@ button, **Clean up my tabs**, runs a single scan that produces two results:
 2. Turn on **Developer mode**
 3. **Load unpacked** → select this repository's root folder
 
-**Installing shows no permission warning.** That is deliberate — see below.
+**The extension requires no permissions at install time.** That is deliberate —
+see below.
+
+### How to actually verify that
+
+Loading unpacked never shows the install-time permission dialog, so seeing no
+warning during step 3 proves nothing. Check the effect directly:
+
+`chrome://extensions` → **Details** on the Tab Cleanup card → **Permissions**
+
+Before you click the button, no required permissions are listed. After you grant
+`tabs`, it appears there as a toggle you can revoke — which is a good way to
+re-test the permission flow. `test/guards.test.js` asserts the cause (`manifest.json`
+declares no permissions and no host permissions); the Details page is where you
+confirm Chrome agrees.
 
 ## Permissions: why there are none at install time
 
@@ -106,6 +120,7 @@ Because that guard matches `.remove(` in general, the DOM code uses
 Do not write the live close path until all of these hold:
 
 - [ ] `npm test` passes.
+- [ ] The Details page confirms no required permissions.
 - [ ] Dry run exercised against a real browser with several windows and 50+ tabs.
 - [ ] Every protection verified to fire: pinned, active, audible, grouped, sole
       tab in window.
@@ -121,6 +136,37 @@ Do not write the live close path until all of these hold:
 ```sh
 npm test    # node --test, no dependencies
 ```
+
+### Testing in a browser
+
+Use a scratch profile so you can build a test scenario without disturbing your
+real windows:
+
+```sh
+"/c/Program Files/Google/Chrome/Application/chrome.exe" \
+  --user-data-dir="$LOCALAPPDATA/Temp/tabcleanup-profile"
+```
+
+Avoid `--load-extension` on a first run — it skips the normal install path, which
+is part of what you are checking. Use **Load unpacked** instead.
+
+Two passes are worth doing:
+
+1. **Constructed scenario**, in the scratch profile — one pinned new tab, one in a
+   tab group, one playing audio, one alone in its own window, one active. Every
+   protection should fire exactly once and appear with its reason.
+2. **Your real browser**, where the actual tab mess lives. This is what surfaces
+   false positives a constructed scenario cannot, and the dry run makes it safe.
+
+The popup closes when it loses focus, which makes its console hard to reach.
+Right-click the popup → **Inspect** pins it open; `[dry-run] would close [...]`
+is logged there. **⧉ Copy report** puts the whole scan on the clipboard as
+markdown.
+
+Chromium forks are worth a spot-check, since they exercise new-tab URLs Chrome
+never will (`edge://newtab/`, `brave://newtab/`, `vivaldi://newtab/`). Confirm
+what each fork actually reports as the committed URL rather than assuming — if
+one differs, it is one line in `NEW_TAB_URLS`.
 
 No build step, no runtime dependencies, no framework — plain ESM loaded directly
 by the browser. All decision logic is pure functions over plain `Tab`-shaped

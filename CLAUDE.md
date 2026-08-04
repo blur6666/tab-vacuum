@@ -46,7 +46,9 @@ instead of `element.remove()` and `classList.remove()`. Keep it that way.
 
 - `npm test` — `node --test`, no dependencies.
 - Load unpacked: `chrome://extensions` → Developer mode → Load unpacked → repo root.
-  Installing must show **no permission warning**.
+  The extension must require **no permissions at install time**. Loading unpacked
+  shows no install dialog at all, so verify this on the extension's **Details**
+  page under *Permissions*, not by the absence of a prompt.
 
 ## Known limitation
 

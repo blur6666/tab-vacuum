@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../shared.css" />
+    <link rel="stylesheet" href="review.css" />
+    <title>Duplicate tabs — Tab Cleanup</title>
+  </head>
+  <body>
+    <main>
+      <header class="page-head">
+        <h1>Duplicate tabs</h1>
+        <div class="actions">
+          <button id="rescan" type="button">↻ Rescan</button>
+          <button id="copy" type="button">⧉ Copy report</button>
+        </div>
+      </header>
+
+      <p class="dry-run-banner">
+        <strong>DRY RUN</strong>
+        <span>This page is read-only. Nothing is closed, and nothing is selected.</span>
+      </p>
+
+      <p id="summary" class="muted"></p>
+      <p id="status" class="muted"></p>
+
+      <div id="groups"></div>
+
+      <footer class="page-foot muted">
+        <span class="keeper-badge">★</span> marks the tab we suggest keeping. Selecting and
+        closing duplicates arrives in a later iteration.
+      </footer>
+    </main>
+
+    <script type="module" src="review.js"></script>
+  </body>
+</html>

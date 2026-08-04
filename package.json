@@ -1,0 +1,10 @@
+{
+  "name": "tab-cleanup",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Chrome/Chromium extension that finds unused new-tab pages and duplicate tabs.",
+  "scripts": {
+    "test": "node --test"
+  }
+}

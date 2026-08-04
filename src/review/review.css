@@ -1,0 +1,105 @@
+main {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-head h1 {
+  font-size: 20px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+#summary,
+#status {
+  margin: 0;
+}
+
+#status:empty {
+  display: none;
+}
+
+#groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.group-key {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.group-count {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tab-row {
+  display: grid;
+  grid-template-columns: 20px 1fr auto auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.tab-row:first-of-type {
+  border-top: none;
+}
+
+.tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-meta {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.page-foot {
+  font-size: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.empty {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+}

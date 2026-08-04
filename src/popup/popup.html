@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../shared.css" />
+    <link rel="stylesheet" href="popup.css" />
+    <title>Tab Cleanup</title>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Tab Cleanup</h1>
+      </header>
+
+      <p class="dry-run-banner">
+        <strong>DRY RUN</strong>
+        <span>Nothing will be closed.</span>
+      </p>
+
+      <button id="scan" class="primary" type="button">Clean up my tabs</button>
+
+      <p id="status" class="muted status"></p>
+
+      <section id="results" class="hidden">
+        <p id="totals" class="muted"></p>
+
+        <div class="result-block">
+          <div class="result-head">
+            <span>Unused new tabs</span>
+            <span id="new-tab-count" class="count">0</span>
+          </div>
+          <p id="new-tab-windows" class="muted small"></p>
+          <button id="toggle-protected" class="link hidden" type="button"></button>
+          <ul id="protected-list" class="hidden detail-list"></ul>
+        </div>
+
+        <div class="result-block">
+          <div class="result-head">
+            <span>Duplicates</span>
+            <span id="duplicate-count" class="count">0</span>
+          </div>
+          <p id="duplicate-summary" class="muted small"></p>
+          <button id="open-review" class="hidden" type="button">Review duplicates →</button>
+        </div>
+
+        <footer>
+          <span class="muted small">Nothing was closed.</span>
+          <button id="copy" type="button" title="Copy dry-run report">⧉ Copy report</button>
+        </footer>
+      </section>
+    </main>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

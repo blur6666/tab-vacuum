@@ -111,20 +111,29 @@ junk. `closeTabs()` returns `{ closed: 0 }` and no tab-closing call exists in
 
 ---
 
-## Step 5 — Real-world pass, and what to bring back
+## Step 5 — Real-world pass
 
 Run it against your actual browser with your actual tab mess. This is the pass
 that matters: a constructed scenario cannot surface the false positives that
 real browsing produces.
 
-Click **⧉ Copy report** and paste the markdown into a Claude session, along with:
+**The report stays on your machine.** It lists your real URLs and tab titles, so
+it is not something to paste into a chat, and nothing here asks you to. Use
+**⧉ Copy report** for your own reading — the scan is a local, read-only,
+dry-run pass and the output never leaves the browser.
 
-- The new-tab URL from step 1, and whether `NEW_TAB_URLS` needed changing.
-- Any tab under **"would close"** that you would have wanted to keep — the most
-  valuable signal here, since a false positive is the only truly costly error.
-- Any duplicate group that should not have been grouped, or pair that should
-  have been and was not.
+Read it yourself and look for four things:
+
+- Any tab under **"would close"** that you would have wanted to keep. This is
+  the only truly costly error, since a false positive means a lost tab once the
+  live path exists.
+- Any group of identical pages that did **not** get grouped.
+- Any group that should not have been grouped — different pages merged into one.
 - Whether the suggested keeper (★) was the one you would have picked.
+
+Each maps to a knob below. If you want help without sharing anything, the
+symptom alone is enough — "two tabs on the same page didn't group, the URLs
+differed only by a query parameter" is fully diagnosable with no URL attached.
 
 ### Tuning knobs, all in `src/lib/config.js`
 

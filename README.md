@@ -1,7 +1,8 @@
 # Tab Cleanup
 
-A Chrome/Chromium extension that finds junk tabs across all your windows. One
-button, **Clean up my tabs**, runs a single scan that produces two results:
+A Chromium extension (Edge, Brave, Chrome, Vivaldi) that finds junk tabs across
+all your windows. One button, **Clean up my tabs**, runs a single scan that
+produces two results:
 
 - **Unused new tabs** — new-tab pages that were opened and never navigated.
 - **Duplicate tabs** — groups of tabs pointing at the same page.
@@ -12,7 +13,16 @@ button, **Clean up my tabs**, runs a single scan that produces two results:
 
 ## Install (unpacked)
 
-1. Open `chrome://extensions`
+The target browsers for this project are **Edge** and **Brave**. Everything is
+plain MV3, so it should work in any Chromium browser, but Chrome is not being
+tested and its `chrome://`-specific new-tab URLs may never appear in practice.
+
+| Browser | Extensions page |
+| --- | --- |
+| Edge | `edge://extensions` |
+| Brave | `brave://extensions` |
+
+1. Open the extensions page for your browser
 2. Turn on **Developer mode**
 3. **Load unpacked** → select this repository's root folder
 
@@ -24,13 +34,13 @@ see below.
 Loading unpacked never shows the install-time permission dialog, so seeing no
 warning during step 3 proves nothing. Check the effect directly:
 
-`chrome://extensions` → **Details** on the Tab Cleanup card → **Permissions**
+extensions page → **Details** on the Tab Cleanup card → **Permissions**
 
 Before you click the button, no required permissions are listed. After you grant
 `tabs`, it appears there as a toggle you can revoke — which is a good way to
 re-test the permission flow. `test/guards.test.js` asserts the cause (`manifest.json`
 declares no permissions and no host permissions); the Details page is where you
-confirm Chrome agrees.
+confirm the browser agrees.
 
 ## Permissions: why there are none at install time
 
@@ -129,7 +139,7 @@ Do not write the live close path until all of these hold:
 - [ ] Behaviour confirmed after revoking the permission (must prompt, never
       produce a bogus plan).
 - [ ] The change to `execute.js` reviewed deliberately, with undo behaviour
-      (Chrome's "Reopen closed tab") considered.
+      (the browser's "Reopen closed tab") considered.
 
 ## Development
 
@@ -139,34 +149,31 @@ npm test    # node --test, no dependencies
 
 ### Testing in a browser
 
-Use a scratch profile so you can build a test scenario without disturbing your
-real windows:
+**Browser testing is manual.** It cannot be automated, and that is not a
+preference — Chromium removed the `--load-extension` command-line switch in
+version 137 because malware abused it, so no unpacked extension can be
+auto-installed into a scripted browser. Verified against Chrome 150 on Windows:
+the switch is silently ignored in both headful and headless mode, and the
+extension never registers in the profile. **Load unpacked** by hand is the only
+route.
 
-```sh
-"/c/Program Files/Google/Chrome/Application/chrome.exe" \
-  --user-data-dir="$LOCALAPPDATA/Temp/tabcleanup-profile"
-```
+See [TESTING.md](TESTING.md) for the step-by-step plan and a results template.
 
-Avoid `--load-extension` on a first run — it skips the normal install path, which
-is part of what you are checking. Use **Load unpacked** instead.
+The short version:
 
-Two passes are worth doing:
-
-1. **Constructed scenario**, in the scratch profile — one pinned new tab, one in a
-   tab group, one playing audio, one alone in its own window, one active. Every
-   protection should fire exactly once and appear with its reason.
-2. **Your real browser**, where the actual tab mess lives. This is what surfaces
-   false positives a constructed scenario cannot, and the dry run makes it safe.
+1. **Confirm what your browser calls its new tab page** before anything else —
+   see TESTING.md step 1. `NEW_TAB_URLS` in `src/lib/config.js` is unverified
+   for Edge and Brave, and if it is wrong the scan finds nothing at all.
+2. **Constructed scenario** — one pinned new tab, one in a tab group, one
+   playing audio, one alone in its own window, one active. Every protection
+   should fire exactly once and appear with its reason.
+3. **Your real browser**, where the actual tab mess lives. This surfaces false
+   positives a constructed scenario cannot, and the dry run makes it safe.
 
 The popup closes when it loses focus, which makes its console hard to reach.
 Right-click the popup → **Inspect** pins it open; `[dry-run] would close [...]`
 is logged there. **⧉ Copy report** puts the whole scan on the clipboard as
-markdown.
-
-Chromium forks are worth a spot-check, since they exercise new-tab URLs Chrome
-never will (`edge://newtab/`, `brave://newtab/`, `vivaldi://newtab/`). Confirm
-what each fork actually reports as the committed URL rather than assuming — if
-one differs, it is one line in `NEW_TAB_URLS`.
+markdown — that is the artifact to bring back for tuning.
 
 No build step, no runtime dependencies, no framework — plain ESM loaded directly
 by the browser. All decision logic is pure functions over plain `Tab`-shaped

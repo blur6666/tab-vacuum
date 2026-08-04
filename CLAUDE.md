@@ -45,14 +45,48 @@ instead of `element.remove()` and `classList.remove()`. Keep it that way.
 ## Commands
 
 - `npm test` — `node --test`, no dependencies.
-- Load unpacked: `chrome://extensions` → Developer mode → Load unpacked → repo root.
-  The extension must require **no permissions at install time**. Loading unpacked
-  shows no install dialog at all, so verify this on the extension's **Details**
-  page under *Permissions*, not by the absence of a prompt.
+- Load unpacked: `edge://extensions` or `brave://extensions` → Developer mode →
+  Load unpacked → repo root. The extension must require **no permissions at
+  install time**. Loading unpacked shows no install dialog at all, so verify
+  this on the extension's **Details** page under *Permissions*, not by the
+  absence of a prompt.
+
+## Target browsers
+
+**Edge and Brave. The user does not use Chrome** — do not write Chrome-specific
+instructions or assume `chrome://` URLs will ever be seen in practice. The code
+stays fork-agnostic (the `chrome.*` namespace is what every Chromium browser
+implements, regardless of branding).
+
+### Unverified assumption
+
+`NEW_TAB_URLS` in `src/lib/config.js` lists `edge://newtab/` and
+`brave://newtab/` from documentation, **not observation**. Neither has been
+confirmed against a real browser, and forks sometimes keep Chromium's internal
+`chrome://newtab/`. If a scan reports zero unused new tabs, check this first —
+see TESTING.md step 1.
+
+## Browser testing is manual and cannot be automated
+
+Do not attempt to script a browser to test this extension. Chromium removed the
+`--load-extension` switch in version 137 (malware abused it). Verified against
+Chrome 150 on Windows: the switch is silently ignored headful *and* headless,
+and the extension never registers in the profile. There is no scripted install
+path for an unpacked extension.
+
+Two further rules, from an explicit user request:
+
+- **Do not launch browsers with `--remote-debugging-port`.** A debug port is
+  unauthenticated and any local process can drive it.
+- **Never `taskkill /IM chrome.exe`** (or msedge/brave) — it kills the user's
+  real browser and their real tabs, not just an automated instance.
+
+The test plan lives in **TESTING.md**. Hand it to the user; do not try to
+execute it. `npm test` is the automated half and covers all pure logic.
 
 ## Known limitation
 
-Chrome exposes no per-tab navigation history, so "never used" is not directly
+Chromium exposes no per-tab navigation history, so "never used" is not directly
 observable. A tab navigated *back* to a new tab page is indistinguishable from a
 fresh one. The URL heuristic is the strongest signal available without extra
 permissions; `lastAccessed` is shown as context, never used as a filter.

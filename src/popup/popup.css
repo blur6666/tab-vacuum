@@ -31,7 +31,7 @@ button.primary {
 }
 
 header #scan.secondary {
-  width: auto;
+  width: 50%;
 }
 
 .status {

@@ -60,6 +60,16 @@ button.primary {
   width: 100%;
 }
 
+button.secondary  {
+  /* background: var(--accent); */
+  border-color: color-mix(var(--border) 50%, transparent);
+  color: light-dark(--text);
+  font-weight: 600;
+  padding: 9px 12px;
+  width: 50%;
+  margin-left: auto;
+}
+
 button.danger {
   color: light-dark(#a52218, #ff9f96);
   border-color: light-dark(#e5b3ae, #6d322c);
@@ -118,3 +128,4 @@ button.link {
 .keeper-badge {
   color: light-dark(#8a6d1f, #f0d68a);
 }
+

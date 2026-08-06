@@ -1,12 +1,4 @@
-/**
- * Every tunable lives here. No logic.
- *
- * See CLAUDE.md rule 1: DRY_RUN is a constant on purpose. There is no UI
- * toggle and no storage-backed setting, so nothing a user clicks can turn
- * real tab closing on.
- */
-
-export const DRY_RUN = true;
+/** Every tunable lives here. No logic. */
 
 /**
  * New-tab pages across the chromium family. Compared *exactly* after
@@ -50,6 +42,33 @@ export const PROTECT = {
   grouped: true,
   soleTabInWindow: true,
 };
+
+/**
+ * Duplicates answer a different question from new-tab pages, so they get their
+ * own list rather than reusing PROTECT.
+ *
+ * `grouped` is deliberately absent. With DEDUPE_WITHIN_TAB_GROUPS on, the
+ * second copy *inside* a group is exactly what we mean to close — protecting
+ * grouped tabs here would make per-group dedupe a no-op.
+ *
+ * `active` and `soleTabInWindow` are absent by decision: closing a duplicate
+ * that is alone in its window closes that window, and the UI warns about it
+ * instead of forbidding it. Set either to true to make it a hard rule.
+ */
+export const NEVER_CLOSE = {
+  pinned: true,
+  audible: true,
+};
+
+/**
+ * Treat tab-group membership as part of a duplicate's identity, so the same
+ * URL in two different groups keeps one copy in each. Off means one keeper
+ * across the whole profile regardless of grouping.
+ */
+export const DEDUPE_WITHIN_TAB_GROUPS = true;
+
+/** How long the armed "click again to close" button waits before reverting. */
+export const CONFIRM_REVERT_MS = 3000;
 
 /** Incognito tabs are only visible at all if the extension is enabled in incognito. */
 export const INCLUDE_INCOGNITO = false;

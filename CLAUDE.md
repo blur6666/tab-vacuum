@@ -2,36 +2,46 @@
 
 ## Purpose
 
-Personal MV3 extension. When you press "Clean tabs" it scans all tabs of all windows of the profile you're using in the browser and lists the results in two groups:
+Personal MV3 extension. When you press "Clean up my tabs" it scans every tab of every normal window in the profile you are using, and reports two things: unused new-tab pages, and duplicate-URL groups.
 
-Unused new-tab pages and and duplicate-URL groups, across` all windows. It reports; and lets you analyze one by one or you can click the button Kill 'Em All! To remove all of the duplicates (except one copy) and unused tabs. 
+It only reports. Acting happens on the review page, where you can go through them one by one and tick what you want gone, or click **Kill 'Em All!** to take every duplicate except one copy per group, plus the unused new tabs.
 
 ## Rules
 
-1. First start in **DRY RUN MODE.** `DRY_RUN` in `src/lib/config.js` is `true` — no UI toggle, no stored setting, and `src/lib/execute.js` has no live branch to flip on. We currently do not check about the "back stack", which is the history of the tab when pressing the back button, and there might be something important there. 
+1. **Nothing closes without a visible selection and a second click.** There is no dry-run flag any more — the safety is at runtime, in three layers: protections computed by `scan.js`, the two-click arm-then-fire confirm in the UI, and `closeTabs()` in `src/lib/execute.js` re-reading every tab immediately before closing it. *Why:* a review page can sit open for an hour while tabs navigate, get pinned, or start playing audio underneath it. Layer 3 is the one that actually holds.
 
-3. **Duplicates are not automatically deleted.**. Why? Because there might be multiple copies of the same page in different groups and it MIGHT make sense to leave them wher they are 
-???? 4. **Protections are honoured and always reported.** Skipped tabs appear in `protectedTabs` with reasons. *Why:* a silently applied rule can't be verified or tuned.
+2. **The popup never closes anything.** It scans and reports; the review page is the only surface that acts. *Why:* scanning is the thing you do casually. It must not be one click away from deleting something.
+
+3. **Duplicates are deduplicated per tab group, and one copy always survives.** The same URL in "Work" and in "Research" is two groups, each keeping its own ★. Kill 'Em All only ever selects non-keepers, so it cannot empty a group however the protections fall. *Why:* copies in different groups are usually a deliberate choice, not a mistake. Ticking a ★ by hand is still allowed — that is a one-by-one decision, not a bulk one.
+
+4. **Protections are honoured, always reported, and never silently skipped.** Protected tabs appear in the results with a ⚠ and their reason, with a disabled checkbox, and no bulk action can reach them. *Why:* a silently applied rule can't be verified or tuned.
+
+5. **Two protection sets, because they answer different questions.** `PROTECT` decides whether a new-tab page is a candidate at all. `NEVER_CLOSE` decides whether a duplicate may be closed, and is deliberately shorter — `grouped` is absent because protecting grouped tabs would make per-group dedupe a no-op, and `active` / `soleTabInWindow` are absent by decision, warned about in the UI rather than forbidden. Closing a duplicate that is alone in its window closes that window; the row says so.
+
+We still do not inspect the "back stack" — the history a tab would return to on Back. There may be something important there.
 
 ## Architecture constraints
 
 - `src/lib/url.js` and `src/lib/scan.js` never touch the `chrome` global — pure functions, so `node --test` imports them with no browser and no mock.
-- `src/lib/chrome-tabs.js` is the only file that may call `chrome.tabs` — one auditable choke point.
+- `src/lib/chrome-tabs.js` is the only file that may call `chrome.tabs` or `chrome.tabGroups` — one auditable choke point, enforced by `test/guards.test.js`.
+- `src/lib/execute.js` decides *whether* a tab may close; `chrome-tabs.js` performs it. `closeTabs()` takes `closer` and `snapshot` as injected options so the policy is testable with no browser — `test/execute.test.js` passes fakes.
 - No service worker, no shared state: the review page re-runs the scan on load instead of receiving a snapshot. Nothing to go stale.
 - No build step, no runtime dependencies, no framework.
 
 ## Lessons learned
 
-- **`tabs` is the permission ceiling.** `manifest.json` declares `"permissions": ["tabs"]` and nothing else. No `storage`, `tabGroups`, host permissions, `<all_urls>` or `content_scripts` without an explicit decision.
+- **`tabs` is the permission ceiling.** `manifest.json` declares `"permissions": ["tabs"]` and nothing else. No `storage`, host permissions, `<all_urls>` or `content_scripts` without an explicit decision.
+- **`tabGroups` was that explicit decision, and it is optional.** It carries its own warning — *"View and manage your tab groups"* — and buys only cosmetics: a heading reading "Work" in the group's colour instead of "group 1". Per-group deduplication reads `tab.groupId`, which is available on every `Tab` with no permission at all. Declining costs labels and nothing else. `chrome.tabGroups.query({})` returns `{id, title, color, collapsed, windowId}`.
 - **Without `tabs`, `tab.url` is `undefined`, not `''`.** Unguarded, every tab looks like a blank new tab and the plan becomes "close everything". `planCleanup()` throws `MissingTabsPermissionError` — never soften that into a default or an empty result. Most dangerous path in the codebase.
-- **`chrome.permissions.request()` throws for non-optional permissions.** `tabs` is required, so `src/lib/permissions.js` calls `contains()` instead. If `tabs` ever moves back to `optional_permissions`, `request()` must be the first statement in the click handler with no `await` before it — an intervening await consumes the user gesture and the call fails.
-- **The dry-run guard bans specific patterns, not `.remove(`.** `test/guards.test.js` matches `tabs.remove`, `tabs[...]`, `chrome['tabs'].remove`, and destructured `remove`. Do not re-add a blanket `.remove(` ban — it forbade `element.remove()` across the whole UI and still missed `chrome.tabs['remove']()`. `execute.js` is the real guarantee; the regex is a backstop.
+- **`chrome.permissions.request()` throws for non-optional permissions.** `tabs` is required, so `src/lib/permissions.js` calls `contains()` instead. `tabGroups` *is* optional, so `requestTabGroupsPermission()` is the real call — and `review.js` has it as the **first statement of the click handler with no `await` before it**. An intervening await consumes the user gesture and the request fails.
+- **The close guard bans specific patterns, not `.remove(`.** `test/guards.test.js` matches `tabs.remove`, `tabs[...]`, `chrome['tabs'].remove`, and destructured `remove` — everywhere except `chrome-tabs.js`. Do not re-add a blanket `.remove(` ban — it forbade `element.remove()` across the whole UI and still missed `chrome.tabs['remove']()`. The companion guard on `chrome.tabs` strips comments before matching, for the same reason: `config.js` and `scan.js` discuss these APIs in prose constantly. `execute.js` is the real guarantee; the regexes are a backstop.
 - **Chromium exposes no per-tab navigation history.** "Never used" is a URL heuristic — a tab navigated *back* to a new-tab page is indistinguishable from a fresh one. `lastAccessed` is context, never a filter.
 
 ## Browser quirks
 
 - **Brave hands the extensions API `chrome://newtab/`**, not the `brave://newtab/` its address bar shows. Edge reports `edge://newtab/`. `NEW_TAB_URLS` must carry the `chrome://` form or Brave never matches.
-- **`--load-extension` is disabled only on Chrome-branded builds (137+).** It works on Brave, Edge, and Playwright's bundled Chromium, headless included, so browser testing is partly automatable — recipe in TESTING.md. Automation still can't click native (non-DOM) dialogs or judge whether a flagged tab was junk.
+- **`--load-extension` is disabled only on Chrome-branded builds (137+).** It works on Brave, Edge, and Playwright's bundled Chromium, headless included, so browser testing is partly automatable — recipe in README.md. Automation still can't judge whether a flagged tab was junk, so the false-positive audit stays human.
+- **The confirm is two clicks on one button, never `confirm()`.** A native dialog blocks every extension event until dismissed and cannot be driven from an automated run. Same reason there is no `alert()` anywhere.
 
 ## Not God's mandaments but be careful:
 

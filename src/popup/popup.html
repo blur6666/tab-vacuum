@@ -12,11 +12,6 @@
         <h1>Tab Cleanup</h1>
       </header>
 
-      <p class="dry-run-banner">
-        <strong>DRY RUN</strong>
-        <span>Nothing will be closed.</span>
-      </p>
-
       <button id="scan" class="primary" type="button">Clean up my tabs</button>
 
       <p id="status" class="muted status"></p>
@@ -40,12 +35,13 @@
             <span id="duplicate-count" class="count">0</span>
           </div>
           <p id="duplicate-summary" class="muted small"></p>
-          <button id="open-review" class="hidden" type="button">Review duplicates →</button>
         </div>
 
+        <button id="open-review" class="primary hidden" type="button">Review &amp; clean →</button>
+
         <footer>
-          <span class="muted small">Nothing was closed.</span>
-          <button id="copy" type="button" title="Copy dry-run report">⧉ Copy report</button>
+          <span class="muted small">Nothing closes without your confirmation.</span>
+          <button id="copy" type="button" title="Copy the scan as markdown">⧉ Copy report</button>
         </footer>
       </section>
     </main>

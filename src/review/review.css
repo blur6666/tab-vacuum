@@ -1,7 +1,8 @@
 main {
-  max-width: 860px;
+  max-width: 900px;
   margin: 0 auto;
-  padding: 24px 20px 48px;
+  /* Bottom padding clears the fixed action bar. */
+  padding: 24px 20px 96px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -32,10 +33,43 @@ main {
   display: none;
 }
 
+.result-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.result-section p {
+  margin: 0;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+
+.section-head h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.rows,
 #groups {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.rows {
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
 .group {
@@ -60,22 +94,57 @@ main {
   word-break: break-all;
 }
 
+.group-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.group-chip {
+  --chip: var(--muted);
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--chip);
+  color: var(--chip);
+}
+
 .group-count {
   font-weight: 600;
-  white-space: nowrap;
 }
 
 .tab-row {
   display: grid;
-  grid-template-columns: 20px 1fr auto auto;
+  grid-template-columns: auto 16px 1fr auto auto auto;
   gap: 10px;
   align-items: baseline;
   padding: 8px 12px;
   border-top: 1px solid var(--border);
+  cursor: pointer;
 }
 
 .tab-row:first-of-type {
   border-top: none;
+}
+
+.tab-row:hover {
+  background: var(--surface);
+}
+
+/* Protected: visibly present, visibly not actionable. */
+.tab-row.protected {
+  cursor: default;
+  color: var(--muted);
+}
+
+.tab-row.protected:hover {
+  background: none;
+}
+
+.tick {
+  align-self: center;
+  margin: 0;
 }
 
 .tab-title {
@@ -84,16 +153,35 @@ main {
   white-space: nowrap;
 }
 
+.tab-notes,
 .tab-meta {
   font-size: 12px;
   color: var(--muted);
   white-space: nowrap;
 }
 
-.page-foot {
-  font-size: 12px;
+.tab-notes.warn {
+  color: light-dark(#8a5a00, #f0c33c);
+}
+
+.tab-notes:empty {
+  display: none;
+}
+
+.action-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 12px 20px;
+  background: var(--bg);
   border-top: 1px solid var(--border);
-  padding-top: 12px;
 }
 
 .empty {

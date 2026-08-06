@@ -29,7 +29,7 @@ test('prettyUrl strips the scheme and truncates', () => {
   assert.ok(prettyUrl(`https://example.com/${'x'.repeat(200)}`).length <= 72);
 });
 
-test('planToMarkdown reports the dry run without claiming anything was closed', () => {
+test('planToMarkdown reports what the scan found', () => {
   const plan = planCleanup([
     { id: 1, windowId: 1, index: 0, url: 'chrome://newtab/', title: 'New Tab', groupId: -1 },
     { id: 2, windowId: 1, index: 1, url: 'https://example.com/p', title: 'P', groupId: -1 },
@@ -38,8 +38,19 @@ test('planToMarkdown reports the dry run without claiming anything was closed', 
 
   const report = planToMarkdown(plan);
 
-  assert.match(report, /DRY RUN — nothing was closed/);
-  assert.match(report, /Unused new tabs — 1 would be closed/);
+  assert.match(report, /Unused new tabs — 1 offered/);
   assert.match(report, /https:\/\/example\.com\/p ×2/);
   assert.match(report, /★ keep/);
+});
+
+test('planToMarkdown names the tab group and flags protected copies', () => {
+  const plan = planCleanup([
+    { id: 1, windowId: 1, index: 0, url: 'https://example.com/g', title: 'G', groupId: 4 },
+    { id: 2, windowId: 1, index: 1, url: 'https://example.com/g', title: 'G', groupId: 4, audible: true },
+  ]);
+
+  const report = planToMarkdown(plan);
+
+  assert.match(report, /×2 · tab group 4/);
+  assert.match(report, /protected \(audible\)/);
 });

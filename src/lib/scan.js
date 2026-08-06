@@ -6,10 +6,15 @@
  */
 
 import { isNewTabUrl, normalizeUrl } from './url.js';
-import { PROTECT, INCLUDE_INCOGNITO } from './config.js';
+import {
+  PROTECT,
+  NEVER_CLOSE,
+  DEDUPE_WITHIN_TAB_GROUPS,
+  INCLUDE_INCOGNITO,
+} from './config.js';
 
 /** chrome.tabGroups.TAB_GROUP_ID_NONE — inlined so this file stays chrome-free. */
-const TAB_GROUP_ID_NONE = -1;
+export const TAB_GROUP_ID_NONE = -1;
 
 export class MissingTabsPermissionError extends Error {
   constructor(
@@ -61,23 +66,31 @@ export function planCleanup(tabs, { selfTabId = null } = {}) {
     if (isNewTabish(tab)) {
       const reasons = protectionReasons(tab, tabsPerWindow, selfTabId);
       if (reasons.length > 0) {
-        protectedTabs.push({ ...summarize(tab), reasons });
+        protectedTabs.push({ ...summarize(tab), reasons, closable: false });
       } else {
-        unusedNewTabs.push(summarize(tab));
+        unusedNewTabs.push({ ...summarize(tab), closable: true });
       }
       continue;
     }
 
     const key = normalizeUrl(tab.url);
     if (key === null) continue;
-    if (!groupsByKey.has(key)) groupsByKey.set(key, []);
-    groupsByKey.get(key).push(tab);
+
+    // Group membership is part of the identity: the same page open in "Work"
+    // and in "Research" is two things a user chose to keep, not a duplicate.
+    const groupId = tabGroupId(tab);
+    const bucket = DEDUPE_WITHIN_TAB_GROUPS ? `${key}\n${groupId}` : key;
+
+    if (!groupsByKey.has(bucket)) groupsByKey.set(bucket, { key, groupId, tabs: [] });
+    groupsByKey.get(bucket).tabs.push(tab);
   }
 
-  const duplicateGroups = [...groupsByKey.entries()]
-    .filter(([, group]) => group.length >= 2)
-    .map(([key, group]) => buildGroup(key, group))
-    .sort((a, b) => b.count - a.count || compare(a.key, b.key));
+  const duplicateGroups = [...groupsByKey.values()]
+    .filter((bucket) => bucket.tabs.length >= 2)
+    .map((bucket) => buildGroup(bucket, tabsPerWindow))
+    .sort(
+      (a, b) => b.count - a.count || compare(a.key, b.key) || a.groupId - b.groupId,
+    );
 
   return {
     totals: {
@@ -111,13 +124,33 @@ function protectionReasons(tab, tabsPerWindow, selfTabId) {
   if (PROTECT.pinned && tab.pinned) reasons.push('pinned');
   if (PROTECT.active && tab.active) reasons.push('active');
   if (PROTECT.audible && tab.audible) reasons.push('audible');
-  if (PROTECT.grouped && tab.groupId !== undefined && tab.groupId !== TAB_GROUP_ID_NONE) {
-    reasons.push('grouped');
-  }
+  if (PROTECT.grouped && tabGroupId(tab) !== TAB_GROUP_ID_NONE) reasons.push('grouped');
   if (PROTECT.soleTabInWindow && tabsPerWindow.get(tab.windowId) === 1) {
     reasons.push('only tab in window');
   }
   return reasons;
+}
+
+/**
+ * Why a duplicate cannot be closed, whatever the UI asked for. Deliberately
+ * shorter than protectionReasons — see NEVER_CLOSE in config.js for which
+ * rules apply to duplicates and why `grouped` is not one of them.
+ *
+ * Exported because execute.js re-runs it against a fresh tab immediately
+ * before closing: the review page can sit open while tabs change underneath it.
+ */
+export function closeBlockers(tab) {
+  const reasons = [];
+  if (NEVER_CLOSE.pinned && tab.pinned) reasons.push('pinned');
+  if (NEVER_CLOSE.audible && tab.audible) reasons.push('audible');
+  if (NEVER_CLOSE.active && tab.active) reasons.push('active');
+  if (NEVER_CLOSE.grouped && tabGroupId(tab) !== TAB_GROUP_ID_NONE) reasons.push('grouped');
+  return reasons;
+}
+
+/** Chrome omits groupId entirely on older builds; absent means ungrouped. */
+function tabGroupId(tab) {
+  return tab.groupId ?? TAB_GROUP_ID_NONE;
 }
 
 function summarize(tab) {
@@ -131,7 +164,7 @@ function summarize(tab) {
   };
 }
 
-function buildGroup(key, group) {
+function buildGroup({ key, groupId, tabs: group }, tabsPerWindow) {
   const keeper = pickKeeper(group);
   const tabs = [...group]
     .sort(
@@ -140,13 +173,24 @@ function buildGroup(key, group) {
         a.windowId - b.windowId ||
         a.index - b.index,
     )
-    .map((tab) => ({
-      ...summarize(tab),
-      isKeeper: tab.id === keeper.tab.id,
-      keeperReason: tab.id === keeper.tab.id ? keeper.reason : null,
-    }));
+    .map((tab) => {
+      const isKeeper = tab.id === keeper.tab.id;
+      const protections = closeBlockers(tab);
 
-  return { key, count: group.length, tabs };
+      return {
+        ...summarize(tab),
+        isKeeper,
+        keeperReason: isKeeper ? keeper.reason : null,
+        protections,
+        // The keeper is not "protected" — it is simply the copy we suggest you
+        // keep, and you are free to tick it and keep a different one instead.
+        closable: protections.length === 0,
+        // Advisory only: closing this one takes its window with it.
+        closesWindow: tabsPerWindow.get(tab.windowId) === 1,
+      };
+    });
+
+  return { key, groupId, count: group.length, tabs };
 }
 
 /** pinned > active > most recently used > earliest in window order. */

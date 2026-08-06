@@ -1,7 +1,12 @@
+/**
+ * The popup only ever reports. Everything that closes a tab lives on the
+ * review page, behind a visible selection and a two-click confirm — scanning
+ * must never be one click away from deleting something.
+ */
+
 import { queryAllTabs, openReviewPage } from '../lib/chrome-tabs.js';
 import { requestTabsPermission } from '../lib/permissions.js';
 import { planCleanup, MissingTabsPermissionError } from '../lib/scan.js';
-import { closeTabs } from '../lib/execute.js';
 import { planToMarkdown, prettyUrl } from '../lib/format.js';
 
 const $ = (id) => document.getElementById(id);
@@ -39,13 +44,10 @@ async function scan() {
   const plan = planCleanup(tabs);
   lastPlan = plan;
 
-  // Dry run: this closes nothing and only reports what it would have closed.
-  const outcome = closeTabs(plan.unusedNewTabs.map((tab) => tab.id));
-
-  render(plan, outcome);
+  render(plan);
 }
 
-function render(plan, outcome) {
+function render(plan) {
   setStatus('');
   results.classList.toggle('hidden', false);
 
@@ -54,7 +56,7 @@ function render(plan, outcome) {
     `${plan.totals.windows === 1 ? '' : 's'}` +
     (plan.totals.skippedIncognito ? ` · ${plan.totals.skippedIncognito} incognito skipped` : '');
 
-  $('new-tab-count').textContent = String(outcome.wouldClose.length);
+  $('new-tab-count').textContent = String(plan.unusedNewTabs.length);
   $('new-tab-windows').textContent = plan.unusedNewTabs.length
     ? describePerWindow(plan.unusedNewTabs)
     : 'No unused new tabs found.';
@@ -65,9 +67,13 @@ function render(plan, outcome) {
   $('duplicate-count').textContent = String(plan.duplicateGroups.length);
   $('duplicate-summary').textContent = plan.duplicateGroups.length
     ? `${plan.duplicateGroups.length} group${plan.duplicateGroups.length === 1 ? '' : 's'}` +
-      ` · ${duplicateTabs} tabs. Nothing is closed.`
+      ` · ${duplicateTabs} tabs`
     : 'No duplicate tabs found.';
-  openReview.classList.toggle('hidden', plan.duplicateGroups.length === 0);
+
+  // The review page is the only place anything closes, so offer it whenever
+  // there is something to act on — not just when there are duplicates.
+  const hasAnything = plan.unusedNewTabs.length > 0 || plan.duplicateGroups.length > 0;
+  openReview.classList.toggle('hidden', !hasAnything);
 }
 
 function renderProtected(protectedTabs) {

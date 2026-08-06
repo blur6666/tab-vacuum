@@ -60,10 +60,36 @@ button.primary {
   width: 100%;
 }
 
-.dry-run-banner {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
+button.danger {
+  color: light-dark(#a52218, #ff9f96);
+  border-color: light-dark(#e5b3ae, #6d322c);
+}
+
+button.danger:hover:not(:disabled) {
+  border-color: light-dark(#a52218, #ff9f96);
+}
+
+/** The armed half of a two-click confirm. Loud on purpose. */
+button.armed {
+  background: light-dark(#a52218, #ff9f96);
+  border-color: light-dark(#a52218, #ff9f96);
+  color: light-dark(#ffffff, #2a0f0c);
+  font-weight: 600;
+}
+
+button.link {
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  color: var(--accent);
+  font-size: 12px;
+  text-decoration: underline;
+}
+
+/** Result of the last close, and any tab that changed under it. */
+.notice {
+  margin: 0;
   background: var(--warn-bg);
   border: 1px solid var(--warn-border);
   color: var(--warn-text);
@@ -72,12 +98,12 @@ button.primary {
   font-size: 12px;
 }
 
-.dry-run-banner strong {
-  letter-spacing: 0.04em;
-}
-
 .muted {
   color: var(--muted);
+}
+
+.small {
+  font-size: 12px;
 }
 
 .hidden {

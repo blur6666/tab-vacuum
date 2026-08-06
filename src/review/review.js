@@ -1,35 +1,38 @@
-import { queryAllTabs, getSelfTabId } from '../lib/chrome-tabs.js';
-import { hasTabsPermission, requestTabsPermission } from '../lib/permissions.js';
-import { planCleanup, MissingTabsPermissionError } from '../lib/scan.js';
-import { relativeTime, planToMarkdown } from '../lib/format.js';
+import { queryAllTabs, getSelfTabId, queryGroupsById } from '../lib/chrome-tabs.js';
+import {
+  hasTabsPermission,
+  requestTabsPermission,
+  hasTabGroupsPermission,
+  requestTabGroupsPermission,
+} from '../lib/permissions.js';
+import { planCleanup, MissingTabsPermissionError, TAB_GROUP_ID_NONE } from '../lib/scan.js';
+import { closeTabs, bulkSelection, closableTabs } from '../lib/execute.js';
+import { relativeTime, planToMarkdown, prettyUrl } from '../lib/format.js';
+import { CONFIRM_REVERT_MS } from '../lib/config.js';
 
 const $ = (id) => document.getElementById(id);
 
 const groupsEl = $('groups');
+const newTabsEl = $('new-tabs');
 const summary = $('summary');
 const status = $('status');
-const rescan = $('rescan');
-const copyButton = $('copy');
+const outcome = $('outcome');
+const actionBar = $('action-bar');
+const selectionCount = $('selection-count');
+const closeSelected = $('close-selected');
+const killEmAll = $('kill-em-all');
+const groupNamesButton = $('group-names');
 
 let lastPlan = null;
+let selfTabId = null;
 let windowNumbers = new Map();
+let groupNumbers = new Map();
+let tabGroups = new Map();
 
-rescan.addEventListener('click', () => {
-  // `tabs` is required, so this never prompts — it re-checks in case the
-  // permission was revoked from the Details page while this tab sat open.
-  requestTabsPermission()
-    .then((ok) => (ok ? load() : needsPermission()))
-    .catch(showError);
-});
+/** Tab ids the user has ticked. Survives a re-render, cleared after a close. */
+const selected = new Set();
 
-copyButton.addEventListener('click', async () => {
-  if (!lastPlan) return;
-  await navigator.clipboard.writeText(planToMarkdown(lastPlan));
-  copyButton.textContent = '✓ Copied';
-  setTimeout(() => {
-    copyButton.textContent = '⧉ Copy report';
-  }, 1500);
-});
+/* ------------------------------------------------------------------ scan */
 
 /**
  * No snapshot is passed from the popup — with no storage permission and no
@@ -38,33 +41,82 @@ copyButton.addEventListener('click', async () => {
 async function load() {
   status.textContent = 'Scanning…';
 
-  const [tabs, selfTabId] = await Promise.all([queryAllTabs(), getSelfTabId()]);
-  const plan = planCleanup(tabs, { selfTabId });
+  const [tabs, self, groups] = await Promise.all([
+    queryAllTabs(),
+    getSelfTabId(),
+    queryGroupsById(),
+  ]);
+
+  selfTabId = self;
+  tabGroups = groups;
+
+  const plan = planCleanup(tabs, { selfTabId: self });
   lastPlan = plan;
 
+  // A tab that vanished between scans must not stay ticked.
+  const stillOffered = closableTabs(plan);
+  for (const id of [...selected]) {
+    if (!stillOffered.has(id)) selected.delete(id);
+  }
+
   numberWindows(plan);
+  numberGroups(plan);
   render(plan);
 }
 
+/* ---------------------------------------------------------------- render */
+
 function render(plan) {
   status.textContent = '';
+  disarmAll();
 
   const duplicateTabs = plan.duplicateGroups.reduce((sum, group) => sum + group.count, 0);
-  summary.textContent = plan.duplicateGroups.length
-    ? `${plan.duplicateGroups.length} group${plan.duplicateGroups.length === 1 ? '' : 's'} · ` +
-      `${duplicateTabs} tabs across ${plan.totals.windows} window` +
-      `${plan.totals.windows === 1 ? '' : 's'}`
-    : `Scanned ${plan.totals.considered} tabs across ${plan.totals.windows} windows.`;
-
-  if (plan.duplicateGroups.length === 0) {
-    const empty = document.createElement('p');
-    empty.className = 'empty';
-    empty.textContent = 'No duplicate tabs found.';
-    groupsEl.replaceChildren(empty);
-    return;
+  const parts = [];
+  if (plan.unusedNewTabs.length) parts.push(`${plan.unusedNewTabs.length} unused new tabs`);
+  if (plan.duplicateGroups.length) {
+    parts.push(
+      `${plan.duplicateGroups.length} duplicate group` +
+        `${plan.duplicateGroups.length === 1 ? '' : 's'} · ${duplicateTabs} tabs`,
+    );
   }
+  summary.textContent = parts.length
+    ? `${parts.join(' · ')} across ${plan.totals.windows} window` +
+      `${plan.totals.windows === 1 ? '' : 's'}`
+    : `Scanned ${plan.totals.considered} tabs. Nothing to clean up.`;
 
+  renderNewTabs(plan);
+  renderDuplicates(plan);
+
+  const hasAnything = plan.unusedNewTabs.length > 0 || plan.duplicateGroups.length > 0;
+  $('empty').classList.toggle('hidden', hasAnything);
+  actionBar.classList.toggle('hidden', !hasAnything);
+
+  // Only worth offering when there is actually a group to name.
+  const hasGrouped = plan.duplicateGroups.some((g) => g.groupId !== TAB_GROUP_ID_NONE);
+  hasTabGroupsPermission()
+    .then((granted) => {
+      groupNamesButton.classList.toggle('hidden', granted || !hasGrouped);
+    })
+    .catch(() => groupNamesButton.classList.add('hidden'));
+
+  updateSelectionUi();
+}
+
+function renderNewTabs(plan) {
+  const rows = [
+    ...plan.unusedNewTabs.map((tab) => renderRow(tab, { label: prettyUrl(tab.url) })),
+    ...plan.protectedTabs.map((tab) =>
+      renderRow(tab, { label: prettyUrl(tab.url), protections: tab.reasons }),
+    ),
+  ];
+
+  newTabsEl.replaceChildren(...rows);
+  $('new-tabs-section').classList.toggle('hidden', rows.length === 0);
+}
+
+function renderDuplicates(plan) {
   groupsEl.replaceChildren(...plan.duplicateGroups.map(renderGroup));
+  $('duplicates-section').classList.toggle('hidden', plan.duplicateGroups.length === 0);
 }
 
 function renderGroup(group) {
@@ -78,35 +130,82 @@ function renderGroup(group) {
   key.className = 'group-key';
   key.textContent = group.key;
 
+  const meta = document.createElement('span');
+  meta.className = 'group-meta';
+
+  const where = groupLabel(group.groupId);
+  if (where) {
+    const chip = document.createElement('span');
+    chip.className = 'group-chip';
+    chip.textContent = where.text;
+    if (where.color) chip.style.setProperty('--chip', where.color);
+    meta.append(chip);
+  }
+
+  const selectAll = document.createElement('button');
+  selectAll.type = 'button';
+  selectAll.className = 'link';
+  selectAll.textContent = 'select all';
+  selectAll.title = 'Ticks every closable copy except the ★';
+  selectAll.addEventListener('click', () => {
+    toggleSelection(group.tabs.filter((tab) => tab.closable && !tab.isKeeper).map((t) => t.id));
+  });
+
   const count = document.createElement('span');
   count.className = 'group-count';
   count.textContent = `×${group.count}`;
 
-  head.append(key, count);
+  meta.append(selectAll, count);
+  head.append(key, meta);
   section.append(head);
 
   for (const tab of group.tabs) {
-    section.append(renderRow(tab));
+    section.append(renderRow(tab, { protections: tab.protections }));
   }
 
   return section;
 }
 
-function renderRow(tab) {
-  const row = document.createElement('div');
+function renderRow(tab, { label = null, protections = [] } = {}) {
+  const row = document.createElement('label');
   row.className = 'tab-row';
-  // The later selection iteration hangs off this without reshaping the DOM.
   row.dataset.tabId = String(tab.id);
+
+  const blocked = !tab.closable;
+  if (blocked) row.classList.add('protected');
+
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.className = 'tick';
+  box.disabled = blocked;
+  box.checked = selected.has(tab.id);
+  box.addEventListener('change', () => {
+    if (box.checked) selected.add(tab.id);
+    else selected.delete(tab.id);
+    updateSelectionUi();
+  });
 
   const badge = document.createElement('span');
   badge.className = 'keeper-badge';
   badge.textContent = tab.isKeeper ? '★' : '';
-  badge.title = tab.isKeeper ? `Suggested keeper — ${tab.keeperReason}` : '';
+  if (tab.isKeeper) badge.title = `Suggested keeper — ${tab.keeperReason}`;
 
   const title = document.createElement('span');
   title.className = 'tab-title';
-  title.textContent = tab.title || '(untitled)';
+  title.textContent = label ?? tab.title ?? '(untitled)';
   title.title = tab.url;
+
+  const notes = document.createElement('span');
+  notes.className = 'tab-notes';
+  if (blocked) {
+    notes.classList.add('warn');
+    notes.textContent = `⚠ ${protections.join(', ')}`;
+    notes.title = 'Protected — cannot be closed from here. Tune it in src/lib/config.js';
+  } else if (tab.closesWindow) {
+    notes.classList.add('warn');
+    notes.textContent = '⚠ closes its window';
+    notes.title = 'The only tab in its window — closing it closes the window too.';
+  }
 
   const where = document.createElement('span');
   where.className = 'tab-meta';
@@ -116,8 +215,206 @@ function renderRow(tab) {
   when.className = 'tab-meta';
   when.textContent = relativeTime(tab.lastAccessed);
 
-  row.append(badge, title, where, when);
+  row.append(box, badge, title, notes, where, when);
   return row;
+}
+
+/* ------------------------------------------------------------- selection */
+
+function toggleSelection(ids) {
+  const allOn = ids.length > 0 && ids.every((id) => selected.has(id));
+
+  for (const id of ids) {
+    if (allOn) selected.delete(id);
+    else selected.add(id);
+  }
+
+  syncCheckboxes();
+  updateSelectionUi();
+}
+
+function syncCheckboxes() {
+  for (const row of document.querySelectorAll('.tab-row')) {
+    const box = row.querySelector('.tick');
+    if (!box.disabled) box.checked = selected.has(Number(row.dataset.tabId));
+  }
+}
+
+function updateSelectionUi() {
+  const count = selected.size;
+
+  selectionCount.textContent = count
+    ? `${count} tab${count === 1 ? '' : 's'} selected`
+    : 'Nothing selected';
+  closeSelected.disabled = count === 0;
+
+  if (count === 0) disarm(closeSelected);
+}
+
+for (const button of document.querySelectorAll('.select-all')) {
+  button.addEventListener('click', () => {
+    if (!lastPlan) return;
+
+    const ids =
+      button.dataset.scope === 'new-tabs'
+        ? lastPlan.unusedNewTabs.filter((tab) => tab.closable).map((tab) => tab.id)
+        : lastPlan.duplicateGroups.flatMap((group) =>
+            group.tabs.filter((tab) => tab.closable && !tab.isKeeper).map((tab) => tab.id),
+          );
+
+    toggleSelection(ids);
+  });
+}
+
+/* --------------------------------------------------------------- closing */
+
+/**
+ * Two-click arm-then-fire. Deliberately not `confirm()`: a native dialog
+ * blocks every extension event until it is dismissed, and cannot be driven
+ * from an automated run.
+ */
+const armed = new Map();
+
+function arm(button, prompt, action) {
+  if (armed.has(button)) {
+    disarm(button);
+    action();
+    return;
+  }
+
+  disarmAll();
+
+  const label = button.textContent;
+  const timer = setTimeout(() => disarm(button, label), CONFIRM_REVERT_MS);
+
+  armed.set(button, { label, timer });
+  button.textContent = prompt;
+  button.classList.add('armed');
+}
+
+function disarm(button, label) {
+  const state = armed.get(button);
+  if (!state) return;
+
+  clearTimeout(state.timer);
+  armed.delete(button);
+  button.textContent = label ?? state.label;
+  button.classList.remove('armed');
+}
+
+function disarmAll() {
+  for (const button of [...armed.keys()]) disarm(button);
+}
+
+closeSelected.addEventListener('click', () => {
+  if (selected.size === 0) return;
+  arm(closeSelected, `Close ${selected.size}? — click again`, () => run([...selected]));
+});
+
+killEmAll.addEventListener('click', () => {
+  if (!lastPlan) return;
+
+  // Tick everything it would take, so the second click confirms a selection
+  // the user can actually see.
+  const ids = bulkSelection(lastPlan);
+  if (ids.length === 0) return;
+
+  for (const id of ids) selected.add(id);
+  syncCheckboxes();
+  updateSelectionUi();
+
+  arm(killEmAll, `Kill ${ids.length}? — click again`, () => run([...selected]));
+});
+
+async function run(ids) {
+  status.textContent = 'Closing…';
+  closeSelected.disabled = true;
+  killEmAll.disabled = true;
+
+  try {
+    const result = await closeTabs(lastPlan, ids, { selfTabId });
+    selected.clear();
+    reportOutcome(result);
+    await load();
+  } catch (error) {
+    showError(error);
+  } finally {
+    killEmAll.disabled = false;
+  }
+}
+
+function reportOutcome(result) {
+  outcome.classList.remove('hidden');
+
+  const lines = [
+    result.closed
+      ? `Closed ${result.closed} tab${result.closed === 1 ? '' : 's'} — Ctrl+Shift+T reopens them one at a time.`
+      : 'Nothing was closed.',
+  ];
+
+  if (result.skipped.length) {
+    lines.push(
+      `Skipped ${result.skipped.length}: ` +
+        result.skipped.map((s) => `tab ${s.id} (${s.reason})`).join(', '),
+    );
+  }
+
+  outcome.textContent = lines.join(' ');
+}
+
+/* ----------------------------------------------------------- group names */
+
+function groupLabel(groupId) {
+  if (groupId === TAB_GROUP_ID_NONE) return { text: 'ungrouped', color: null };
+
+  const group = tabGroups.get(groupId);
+  if (group?.title) return { text: group.title, color: GROUP_COLORS[group.color] ?? null };
+
+  return { text: `group ${groupNumbers.get(groupId) ?? '?'}`, color: null };
+}
+
+/** Chrome reports group colours by name, not by value. */
+const GROUP_COLORS = {
+  grey: '#5f6368',
+  blue: '#1a73e8',
+  red: '#d93025',
+  yellow: '#f9ab00',
+  green: '#1e8e3e',
+  pink: '#d01884',
+  purple: '#9334e6',
+  cyan: '#007b83',
+  orange: '#fa903e',
+};
+
+groupNamesButton.addEventListener('click', () => {
+  // FIRST statement, no await ahead of it — an intervening await consumes the
+  // user gesture and the request silently fails. See permissions.js.
+  requestTabGroupsPermission()
+    .then((granted) => (granted ? load() : undefined))
+    .catch(showError);
+});
+
+/* ----------------------------------------------------------------- chrome */
+
+rescanHandlers();
+
+function rescanHandlers() {
+  $('rescan').addEventListener('click', () => {
+    // `tabs` is required, so this never prompts — it re-checks in case the
+    // permission was revoked from the Details page while this tab sat open.
+    requestTabsPermission()
+      .then((ok) => (ok ? load() : needsPermission()))
+      .catch(showError);
+  });
+
+  $('copy').addEventListener('click', async () => {
+    if (!lastPlan) return;
+    await navigator.clipboard.writeText(planToMarkdown(lastPlan));
+    $('copy').textContent = '✓ Copied';
+    setTimeout(() => {
+      $('copy').textContent = '⧉ Copy report';
+    }, 1500);
+  });
 }
 
 /** Chrome's window ids are arbitrary; show stable 1-based numbers instead. */
@@ -126,17 +423,31 @@ function numberWindows(plan) {
   for (const group of plan.duplicateGroups) {
     for (const tab of group.tabs) ids.add(tab.windowId);
   }
+  for (const tab of [...plan.unusedNewTabs, ...plan.protectedTabs]) ids.add(tab.windowId);
+
   windowNumbers = new Map([...ids].sort((a, b) => a - b).map((id, i) => [id, i + 1]));
+}
+
+/** Same trick for group ids, used whenever `tabGroups` has not been granted. */
+function numberGroups(plan) {
+  const ids = new Set(
+    plan.duplicateGroups.map((g) => g.groupId).filter((id) => id !== TAB_GROUP_ID_NONE),
+  );
+
+  groupNumbers = new Map([...ids].sort((a, b) => a - b).map((id, i) => [id, i + 1]));
 }
 
 function needsPermission() {
   status.textContent =
     'Tab Cleanup needs the "tabs" permission to read tab URLs. It looks like it was ' +
     'revoked — re-enable it on the extension\'s Details page, then click Rescan.';
-  const empty = document.createElement('p');
-  empty.className = 'empty';
+  actionBar.classList.add('hidden');
+  groupsEl.replaceChildren();
+  newTabsEl.replaceChildren();
+
+  const empty = $('empty');
+  empty.classList.remove('hidden');
   empty.textContent = 'Permission required.';
-  groupsEl.replaceChildren(empty);
 }
 
 function showError(error) {

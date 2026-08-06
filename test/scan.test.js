@@ -184,6 +184,88 @@ test('exactly one keeper per group; every other tab is unmarked', () => {
   assert.equal(group.tabs.filter((t) => t.keeperReason !== null).length, 1);
 });
 
+test('the same URL in two tab groups keeps a copy in each', () => {
+  const work = [0, 1].map((index) => tab({ url: 'https://example.com/doc', groupId: 7, index }));
+  const research = [2, 3].map((index) =>
+    tab({ url: 'https://example.com/doc', groupId: 9, index }),
+  );
+
+  const plan = planCleanup([...work, ...research]);
+
+  assert.equal(plan.duplicateGroups.length, 2, 'one group per tab group, not one overall');
+  assert.deepEqual(
+    plan.duplicateGroups.map((g) => g.groupId).sort((a, b) => a - b),
+    [7, 9],
+  );
+  for (const group of plan.duplicateGroups) {
+    assert.equal(group.key, 'https://example.com/doc');
+    assert.equal(group.tabs.filter((t) => t.isKeeper).length, 1, 'each group keeps its own ★');
+  }
+});
+
+test('grouped and ungrouped copies of one URL are separate buckets', () => {
+  const plan = planCleanup([
+    tab({ url: 'https://example.com/doc', groupId: 7 }),
+    tab({ url: 'https://example.com/doc', groupId: 7 }),
+    tab({ url: 'https://example.com/doc' }),
+    tab({ url: 'https://example.com/doc' }),
+  ]);
+
+  assert.equal(plan.duplicateGroups.length, 2);
+  assert.deepEqual(
+    plan.duplicateGroups.map((g) => g.groupId).sort((a, b) => a - b),
+    [-1, 7],
+  );
+});
+
+test('being in a tab group does not protect a duplicate — that would void per-group dedupe', () => {
+  const plan = planCleanup([
+    tab({ url: 'https://example.com/doc', groupId: 7, index: 0 }),
+    tab({ url: 'https://example.com/doc', groupId: 7, index: 1 }),
+  ]);
+
+  const nonKeeper = plan.duplicateGroups[0].tabs.find((t) => !t.isKeeper);
+  assert.equal(nonKeeper.closable, true);
+  assert.deepEqual(nonKeeper.protections, []);
+});
+
+test('a pinned or audible non-keeper duplicate is protected and says why', () => {
+  for (const [reason, overrides] of [
+    ['pinned', { pinned: true }],
+    ['audible', { audible: true }],
+  ]) {
+    // A second pinned/audible tab, so the keeper ladder hands the ★ to the
+    // other one and this copy lands in the non-keeper slot.
+    const keeper = tab({ url: 'https://example.com/x', index: 0, ...overrides });
+    const other = tab({ url: 'https://example.com/x', index: 1, ...overrides });
+
+    const group = planCleanup([keeper, other]).duplicateGroups[0];
+    const nonKeeper = group.tabs.find((t) => !t.isKeeper);
+
+    assert.equal(nonKeeper.closable, false, `${reason} non-keeper must not be closable`);
+    assert.deepEqual(nonKeeper.protections, [reason]);
+  }
+});
+
+test('a group where every copy is protected offers nothing to close', () => {
+  const plan = planCleanup([
+    tab({ url: 'https://example.com/y', pinned: true, index: 0 }),
+    tab({ url: 'https://example.com/y', pinned: true, index: 1 }),
+    tab({ url: 'https://example.com/y', audible: true, index: 2 }),
+  ]);
+
+  assert.equal(plan.duplicateGroups[0].tabs.filter((t) => t.closable).length, 0);
+});
+
+test('a duplicate alone in its window is closable but flagged', () => {
+  const lonely = tab({ url: 'https://example.com/z', windowId: 42 });
+  const plan = planCleanup([lonely, tab({ url: 'https://example.com/z' }), filler()]);
+
+  const flagged = plan.duplicateGroups[0].tabs.find((t) => t.id === lonely.id);
+  assert.equal(flagged.closesWindow, true);
+  assert.equal(flagged.closable, true, 'a warning, not a protection — see NEVER_CLOSE');
+});
+
 test('new-tab pages never appear in duplicate groups', () => {
   const plan = planCleanup([newTab(), newTab(), newTab(), filler()]);
 

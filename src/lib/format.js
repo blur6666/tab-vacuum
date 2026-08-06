@@ -39,11 +39,16 @@ export function prettyUrl(url, maxLength = 72) {
   return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
 }
 
-/** The copyable dry-run report — handy for pasting scan results back for tuning. */
-export function planToMarkdown(plan, { dryRun = true } = {}) {
+/**
+ * The copyable report — handy for pasting scan results back for tuning.
+ *
+ * It lists real URLs and titles, so it is yours to read, not something to
+ * paste anywhere. Nothing sends it; the clipboard is the only exit.
+ */
+export function planToMarkdown(plan) {
   const lines = [];
 
-  lines.push(`# Tab Cleanup report${dryRun ? ' (DRY RUN — nothing was closed)' : ''}`);
+  lines.push('# Tab Cleanup report');
   lines.push('');
   lines.push(`- Windows: ${plan.totals.windows}`);
   lines.push(
@@ -54,7 +59,7 @@ export function planToMarkdown(plan, { dryRun = true } = {}) {
   );
   lines.push('');
 
-  lines.push(`## Unused new tabs — ${plan.unusedNewTabs.length} would be closed`);
+  lines.push(`## Unused new tabs — ${plan.unusedNewTabs.length} offered`);
   if (plan.unusedNewTabs.length === 0) lines.push('_none_');
   for (const tab of plan.unusedNewTabs) {
     lines.push(`- window ${tab.windowId} · tab ${tab.id} · \`${tab.url || '(blank)'}\``);
@@ -68,13 +73,17 @@ export function planToMarkdown(plan, { dryRun = true } = {}) {
   }
   lines.push('');
 
-  lines.push(`## Duplicate groups — ${plan.duplicateGroups.length} (nothing is closed)`);
+  lines.push(`## Duplicate groups — ${plan.duplicateGroups.length}`);
   if (plan.duplicateGroups.length === 0) lines.push('_none_');
   for (const group of plan.duplicateGroups) {
     lines.push('');
-    lines.push(`### ${group.key} ×${group.count}`);
+    lines.push(`### ${group.key} ×${group.count}${describeGroup(group.groupId)}`);
     for (const tab of group.tabs) {
-      const mark = tab.isKeeper ? `★ keep (${tab.keeperReason})` : 'duplicate';
+      const mark = tab.isKeeper
+        ? `★ keep (${tab.keeperReason})`
+        : tab.closable
+          ? 'duplicate'
+          : `protected (${tab.protections.join(', ')})`;
       lines.push(
         `- ${mark} · window ${tab.windowId} · tab ${tab.id} · ${relativeTime(tab.lastAccessed)} · ${tab.title}`,
       );
@@ -82,4 +91,9 @@ export function planToMarkdown(plan, { dryRun = true } = {}) {
   }
 
   return lines.join('\n');
+}
+
+/** Group ids are only meaningful within a session, but they do separate buckets. */
+function describeGroup(groupId) {
+  return groupId === undefined || groupId === -1 ? '' : ` · tab group ${groupId}`;
 }

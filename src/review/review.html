@@ -4,33 +4,55 @@
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../shared.css" />
     <link rel="stylesheet" href="review.css" />
-    <title>Duplicate tabs — Tab Cleanup</title>
+    <title>Review tabs — Tab Cleanup</title>
   </head>
   <body>
     <main>
       <header class="page-head">
-        <h1>Duplicate tabs</h1>
+        <h1>Review tabs</h1>
         <div class="actions">
+          <button id="group-names" class="hidden" type="button" title="Requires the optional tabGroups permission">
+            Show group names
+          </button>
           <button id="rescan" type="button">↻ Rescan</button>
           <button id="copy" type="button">⧉ Copy report</button>
         </div>
       </header>
 
-      <p class="dry-run-banner">
-        <strong>DRY RUN</strong>
-        <span>This page is read-only. Nothing is closed, and nothing is selected.</span>
-      </p>
-
       <p id="summary" class="muted"></p>
       <p id="status" class="muted"></p>
+      <p id="outcome" class="notice hidden"></p>
 
-      <div id="groups"></div>
+      <section id="new-tabs-section" class="result-section hidden">
+        <div class="section-head">
+          <h2>Unused new tabs</h2>
+          <button class="link select-all" type="button" data-scope="new-tabs">select all</button>
+        </div>
+        <div id="new-tabs" class="rows"></div>
+      </section>
 
-      <footer class="page-foot muted">
-        <span class="keeper-badge">★</span> marks the tab we suggest keeping. Selecting and
-        closing duplicates arrives in a later iteration.
-      </footer>
+      <section id="duplicates-section" class="result-section hidden">
+        <div class="section-head">
+          <h2>Duplicate tabs</h2>
+          <button class="link select-all" type="button" data-scope="duplicates">select all</button>
+        </div>
+        <p class="muted small">
+          ★ marks the copy suggested for keeping. Each tab group is deduplicated on its own, so
+          the same page open in two groups keeps one copy in each.
+        </p>
+        <div id="groups"></div>
+      </section>
+
+      <p id="empty" class="empty hidden">Nothing to clean up.</p>
     </main>
+
+    <footer id="action-bar" class="action-bar hidden">
+      <span id="selection-count" class="muted"></span>
+      <div class="actions">
+        <button id="close-selected" type="button" disabled>Close selected</button>
+        <button id="kill-em-all" class="danger" type="button">Kill 'Em All</button>
+      </div>
+    </footer>
 
     <script type="module" src="review.js"></script>
   </body>

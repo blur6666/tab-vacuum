@@ -1,8 +1,8 @@
-# Manual test plan
+# Test plan
 
-Nothing here can be automated — see [Why this is manual](#why-this-is-manual) at
-the bottom. Work through it in **Edge** or **Brave**; the dry run makes every
-step safe.
+Most of this needs a human, but not all of it — see
+[What is automated](#what-is-automated) at the bottom. Work through it in
+**Brave** or **Edge**; the dry run makes every step safe.
 
 Bring the output of step 5 back to a Claude session for heuristic tuning.
 
@@ -11,48 +11,38 @@ Bring the output of step 5 back to a Claude session for heuristic tuning.
 ## Step 0 — Load the extension
 
 ```
-edge://extensions   (or brave://extensions)
+brave://extensions   (or edge://extensions)
 → Developer mode → Load unpacked → repo root
 ```
 
-Then **Details** on the card → **Permissions**. Expect **no required
-permissions** listed. This is the real check; loading unpacked never shows an
-install dialog, so the absence of a prompt proves nothing.
+Then **Details** on the card → **Permissions**. Expect exactly one entry —
+`tabs`, described as *"Read your browsing history"* — and **no host
+permissions**. This is the real check; loading unpacked never shows an install
+dialog, so the absence of a prompt proves nothing either way.
+
+That warning is the expected, correct behaviour, not a bug. `tabs` is what
+un-redacts `url` on tab objects, and reading urls is the whole feature. See
+"Permissions" in README.md for why the alternatives do not work.
 
 ---
 
-## Step 1 — Confirm the new-tab URL (do this first)
+## Step 1 — New-tab URL (already confirmed — spot-check only)
 
-**`NEW_TAB_URLS` in `src/lib/config.js` is unverified for Edge and Brave.** It
-was written from documentation, not observation. If it is wrong, the scan
-silently finds zero unused new tabs and everything downstream looks broken for
-the wrong reason.
+Settled on 2026-08-06 by observation, so this is no longer a blocking first step:
 
-1. Open a new tab (`Ctrl+T`).
-2. Click in the address bar and copy what is actually there. It may be empty —
-   that is fine and expected, and the scan already treats an empty URL as a new
-   tab.
-3. Better still, read what the extension sees. Open the extension's own popup,
-   right-click → **Inspect**, and run in that console:
-
-   ```js
-   (await chrome.tabs.query({ windowType: 'normal' }))
-     .map(t => ({ url: t.url, pending: t.pendingUrl, title: t.title }))
-   ```
-
-   This requires the `tabs` permission, so click **Clean up my tabs** once
-   first to grant it.
-
-**Record the exact new-tab URL string.** Expected values, none confirmed:
-
-| Browser | Expected | Confirmed? |
+| Browser | Reports | Confirmed |
 | --- | --- | --- |
-| Edge | `edge://newtab/` | ☐ |
-| Brave | `brave://newtab/` | ☐ |
+| Edge | `edge://newtab/` | ☑ |
+| Brave 1.93.132 | `chrome://newtab/` — *not* `brave://newtab/` | ☑ |
 
-If it differs, it is a one-line addition to `NEW_TAB_URLS`. Note that Brave in
-particular may report `chrome://newtab/`, since forks often keep Chromium's
-internal URLs.
+Both already match `NEW_TAB_URLS`. Re-check only if a scan reports zero unused
+new tabs, since a browser update could change it. To read what the extension
+actually sees, open the popup, right-click → **Inspect**, and run:
+
+```js
+(await chrome.tabs.query({ windowType: 'normal' }))
+  .map(t => ({ url: t.url, pending: t.pendingUrl, title: t.title }))
+```
 
 ---
 
@@ -80,20 +70,23 @@ right reason, rows 1 and 7 produce the counts above, and **nothing closes**.
 
 ---
 
-## Step 3 — Permission flow
+## Step 3 — Revoked-permission interlock
 
-1. Details page → revoke the `tabs` permission toggle.
-2. Re-open the popup and click the button. It must **prompt**, not produce a
-   plan.
-3. Grant it. If the prompt closes the popup, re-open the popup — it should land
-   already-granted and scan immediately. **Note whether this happens**, since it
-   is browser-specific and the popup carries a hint about it.
-4. Deny it once, too. Expect the explanatory message, not a crash and not an
-   empty result that looks like success.
+`tabs` is required, so there is no prompt to test — but it can still be revoked,
+and that path must fail loudly rather than quietly.
+
+1. Details page → turn the `tabs` permission toggle **off**.
+2. Open the popup and click the button. Expect the explanatory message pointing
+   you back to the Details page — **not** a crash, and not an empty result that
+   looks like a clean browser.
+3. Open the review page too, and click Rescan. Same expectation.
+4. Turn it back on and confirm both scan normally again.
 
 The interlock being tested: without the permission `tab.url` is `undefined`
 rather than `''`, which would otherwise make every tab in the browser look like
 a blank new tab. `planCleanup()` throws `MissingTabsPermissionError` instead.
+This is the single most dangerous failure mode in the codebase — it is the one
+that would produce a "close everything" plan — so it is worth testing by hand.
 
 ---
 
@@ -149,16 +142,51 @@ differed only by a query parameter" is fully diagnosable with no URL attached.
 
 ---
 
-## Why this is manual
+## What is automated
 
-Chromium removed the `--load-extension` command-line switch in version 137
-because malware used it to sideload extensions silently. Verified against
-Chrome 150 on Windows: the switch is accepted but ignored in both headful and
-`--headless=new` mode, and the extension never appears in the profile's
-extension settings. There is no scripted path to install an unpacked extension,
-so an agent cannot drive this test suite for you.
+`npm test` covers everything that does not need a browser: the URL heuristics,
+every protection rule, keeper selection, the permission interlock and the
+dry-run guards — 36 tests over pure functions, no dependencies.
 
-What *is* automated is everything that does not need a browser: `npm test`
-covers the URL heuristics, every protection rule, keeper selection, the
-permission interlock, and the dry-run guards — 36 tests over pure functions.
-The browser passes exist to check the assumptions those tests are built on.
+**Loading and rendering can also be scripted**, contrary to what this file used
+to claim. The `--load-extension` switch was disabled in *Chrome-branded* builds
+at version 137 (malware abused it) but was never removed from Chromium, so Brave
+and Edge still honour it. Verified 2026-08-06 against Brave 1.93.132 and Edge on
+Chromium 151: the extension registers as `location: COMMAND_LINE`, `review.html`
+renders, and the scan groups real duplicate tabs correctly.
+
+The recipe, with Playwright installed **outside** this repo so it stays
+dependency-free:
+
+```js
+import { chromium } from 'playwright';
+
+const ctx = await chromium.launchPersistentContext(THROWAWAY_PROFILE_DIR, {
+  executablePath: 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
+  headless: true,
+  args: [
+    `--disable-extensions-except=${REPO_ROOT}`,
+    `--load-extension=${REPO_ROOT}`,
+  ],
+});
+```
+
+Find the extension id by reading `chrome://extensions-internals/` and matching on
+`name === 'Tab Cleanup'` — do not just take the first id in that dump, because
+Edge ships built-in extensions that appear first. Then navigate to
+`chrome-extension://<id>/src/review/review.html`.
+
+Two rules for any scripted run: use a throw-away `--user-data-dir`, never the
+real profile, and never `taskkill` a browser process — close the context through
+Playwright's API.
+
+**What still needs you**, and always will:
+
+- **Judging false positives.** Whether a flagged tab was really junk is a
+  question about your intent. No script can answer it. This is step 5, and it is
+  the point of the whole plan.
+- **Native browser dialogs.** Anything Chromium draws outside the DOM cannot be
+  clicked by Playwright. Less relevant now that `tabs` is required, but it is
+  why the Details-page steps stay manual.
+- **The constructed scenario in step 2**, which is faster to set up by hand than
+  to script.

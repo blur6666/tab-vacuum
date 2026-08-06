@@ -17,9 +17,10 @@ const copyButton = $('copy');
 let lastPlan = null;
 
 scanButton.addEventListener('click', () => {
-  // First statement, no await before it: an intervening await would consume
-  // the user gesture and chrome.permissions.request() would fail. Resolves
-  // true without prompting when the permission is already held.
+  // `tabs` is a required permission, so this resolves true immediately and
+  // never prompts. The check stays because the permission can still be revoked
+  // from the browser's Details page, and a revoked permission must produce the
+  // explanatory message rather than a silently empty plan.
   const granted = requestTabsPermission();
 
   scanButton.disabled = true;
@@ -110,7 +111,7 @@ copyButton.addEventListener('click', async () => {
 function denied() {
   setStatus(
     'Tab Cleanup needs the "tabs" permission to read tab URLs. Nothing else is accessed. ' +
-      'If the prompt closed this popup, re-open it — the permission is already granted.',
+      'It looks like it was revoked — re-enable it on the extension\'s Details page.',
   );
 }
 

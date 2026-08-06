@@ -12,12 +12,25 @@ unused new-tab pages, and duplicate-URL groups.
    no storage-backed setting, and no live code path. `test/guards.test.js`
    enforces this and must never be weakened. Graduating to live closing is a
    deliberate, reviewed change — see the checklist in README.md.
-2. **Least privilege.** `manifest.json` declares `"permissions": []`. `tabs` is
-   an *optional* permission requested inside a click gesture. Do not add
-   permissions (`storage`, `tabGroups`, host permissions, `<all_urls>`) without
-   an explicit decision — each one adds an install-time warning. `tabs.query`,
-   `tabs.remove`, `tabs.create` and `tabs.getCurrent` need no permission; `tabs`
-   is required only to read `url` / `pendingUrl` / `title` / `favIconUrl`.
+2. **Least privilege — `tabs` is the ceiling.** `manifest.json` declares
+   `"permissions": ["tabs"]` and nothing else. `tabs.query`, `tabs.remove`,
+   `tabs.create` and `tabs.getCurrent` need no permission at all; `tabs` is
+   required *only* to read `url` / `pendingUrl` / `title` / `favIconUrl`, and
+   reading urls is exactly what both features do. Do not add `storage`,
+   `tabGroups`, host permissions, `<all_urls>` or `content_scripts` without an
+   explicit decision — host permissions and content scripts are what turn a tab
+   lister into a page reader, which is a different product.
+
+   `tabs` was optional until 2026-08-06 and is now required. It carries the
+   "Read your browsing history" warning either way: the Chromium prompt fires
+   for any permission that has a warning string attached, and `tabs` has one
+   because it exposes every tab's url continuously. Making it optional moved
+   that same warning from install time to a mid-session dialog without removing
+   it — strictly worse for the identical disclosure. Decided by the user after
+   confirming every comparable extension (OneTab, Tab Wrangler) asks for at
+   least this. `activeTab` and narrow host permissions were considered and do
+   not work: the scan needs every tab in every window, and `chrome://newtab/`
+   accepts no host permission at all.
 3. **Duplicates are never deleted.** The duplicate pass is informational. It
    suggests a keeper and lists the rest. Selection and closing are a later
    iteration, and are additive to the existing DOM/data shape.
@@ -36,53 +49,102 @@ unused new-tab pages, and duplicate-URL groups.
 - No service worker and no shared state: the review page re-runs the scan on
   load rather than receiving a snapshot.
 
-### Consequence of rule 1 you will trip over
+### What the dry-run guard actually checks
 
-`test/guards.test.js` fails on any `.remove(` in `src/`, not just `tabs.remove`.
-So the DOM code uses `element.replaceChildren()` and `classList.toggle(name, on)`
-instead of `element.remove()` and `classList.remove()`. Keep it that way.
+`test/guards.test.js` bans the patterns that reach `chrome.tabs.remove` —
+`tabs.remove`, `tabs[...]`, `chrome['tabs'].remove`, and destructuring `remove`
+off `tabs`. Ordinary DOM calls are fine.
+
+It used to ban `.remove(` outright. That was dropped on 2026-08-06: it forbade
+`element.remove()` and `classList.remove()` across the whole UI while still
+missing `chrome.tabs['remove']()`, so it distorted the code and bought no real
+safety. The existing `replaceChildren()` / `classList.toggle(name, on)` usage is
+fine and was left alone — it is good modern DOM — but it is no longer required.
+
+No regex guard is airtight, and this one does not claim to be. The load-bearing
+guarantee is `src/lib/execute.js`, which has no live close branch to reach.
 
 ## Commands
 
 - `npm test` — `node --test`, no dependencies.
 - Load unpacked: `edge://extensions` or `brave://extensions` → Developer mode →
-  Load unpacked → repo root. The extension must require **no permissions at
-  install time**. Loading unpacked shows no install dialog at all, so verify
-  this on the extension's **Details** page under *Permissions*, not by the
-  absence of a prompt.
+  Load unpacked → repo root. Loading unpacked shows no install dialog at all, so
+  check the granted permissions on the extension's **Details** page under
+  *Permissions*, not by the presence or absence of a prompt. Expect exactly one:
+  the `tabs` permission, shown as "Read your browsing history".
 
 ## Target browsers
 
-**Edge and Brave. The user does not use Chrome** — do not write Chrome-specific
-instructions or assume `chrome://` URLs will ever be seen in practice. The code
-stays fork-agnostic (the `chrome.*` namespace is what every Chromium browser
-implements, regardless of branding).
+**Brave first, Edge second. The user does not use Chrome** and does not plan to
+— write install and testing instructions for `brave://` and `edge://`, not
+`chrome://`.
 
-### Unverified assumption
+That is about the *UI*, not the API. `chrome://` URLs very much do show up in
+practice: Brave itself reports `chrome://newtab/` to `chrome.tabs` (see below).
+The code stays fork-agnostic — the `chrome.*` namespace and `chrome://` internal
+URLs are what every Chromium browser implements, whatever the branding.
 
-`NEW_TAB_URLS` in `src/lib/config.js` lists `edge://newtab/` and
-`brave://newtab/` from documentation, **not observation**. Neither has been
-confirmed against a real browser, and forks sometimes keep Chromium's internal
-`chrome://newtab/`. If a scan reports zero unused new tabs, check this first —
-see TESTING.md step 1.
+### New-tab URLs — now observed, and one surprise
 
-## Browser testing is manual and cannot be automated
+Settled on 2026-08-06 by calling `chrome.tabs.create({})` from inside the
+extension and reading back what `chrome.tabs` reports:
 
-Do not attempt to script a browser to test this extension. Chromium removed the
-`--load-extension` switch in version 137 (malware abused it). Verified against
-Chrome 150 on Windows: the switch is silently ignored headful *and* headless,
-and the extension never registers in the profile. There is no scripted install
-path for an unpacked extension.
+| Browser | Reports | Note |
+| --- | --- | --- |
+| Edge | `edge://newtab/` | as documented |
+| Brave 1.93.132 | `chrome://newtab/` | **not** `brave://newtab/` |
 
-Two further rules, from an explicit user request:
+Brave shows `brave://` in the address bar but hands the extensions API
+Chromium's internal `chrome://newtab/`. The entry carrying Brave is therefore
+`chrome://newtab`, not `brave://newtab`. Both browsers return `true` from
+`isNewTabUrl()`, so this was never a bug — only the documented reason was wrong.
+
+If a scan ever reports zero unused new tabs, this is still the first thing to
+re-check, since a fork can change it in an update.
+
+## Browser testing: what can and cannot be automated
+
+This section used to say browser testing was impossible to automate. That was
+wrong, and was corrected on 2026-08-06 after testing it.
+
+The `--load-extension` switch was disabled in **Chrome-branded** builds at
+version 137 (malware abused it). It was *not* removed from Chromium itself. So:
+
+| | `--load-extension` |
+| --- | --- |
+| Google Chrome 150 | ignored, extension never registers |
+| Brave 1.93.132 | **works** (`location: COMMAND_LINE`) |
+| Edge (Chromium 151) | **works** |
+| Playwright's bundled Chromium | **works**, headless included |
+
+Playwright drives Brave and Edge directly via `executablePath`. Verified
+end-to-end: extension loads, `review.html` renders, and the scan groups real
+duplicate tabs correctly. See TESTING.md for the exact recipe.
+
+Two caveats that keep parts of the plan manual:
+
+- **Native dialogs are out of reach.** Anything Chromium renders outside the
+  DOM — the optional-permission prompt in particular — cannot be clicked by
+  Playwright. This mattered less once `tabs` became required.
+- **Playwright's own Chromium is not Brave.** It proves the code runs; it does
+  not prove Brave behaves. Point `executablePath` at the real browser for
+  anything fork-sensitive, such as new-tab URLs.
+
+Two further rules, both from an explicit user request. These are the two
+restrictions here with a concrete reason behind them — keep them:
 
 - **Do not launch browsers with `--remote-debugging-port`.** A debug port is
-  unauthenticated and any local process can drive it.
-- **Never `taskkill /IM chrome.exe`** (or msedge/brave) — it kills the user's
-  real browser and their real tabs, not just an automated instance.
+  unauthenticated and any local process can drive it. Playwright does not need
+  one; it talks over a pipe, so nothing is lost by respecting this.
+- **Never `taskkill /IM brave.exe`** (or msedge/chrome) — it kills the user's
+  real browser and their real tabs, not just an automated instance. Close a
+  Playwright context through its API instead.
 
-The test plan lives in **TESTING.md**. Hand it to the user; do not try to
-execute it. `npm test` is the automated half and covers all pure logic.
+Automated runs must use a throw-away `--user-data-dir`, never the real profile.
+
+The test plan lives in **TESTING.md**. `npm test` covers all pure logic; the
+Playwright recipe covers loading and rendering; what genuinely needs the user is
+judging false positives against their own real tabs.
 
 ## Known limitation
 

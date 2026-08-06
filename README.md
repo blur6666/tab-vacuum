@@ -1,6 +1,6 @@
 # Tab Cleanup
 
-A Chromium extension (Edge, Brave, Chrome, Vivaldi) that finds junk tabs across
+A Chromium extension (Brave, Edge, Vivaldi, Chrome) that finds junk tabs across
 all your windows. One button, **Clean up my tabs**, runs a single scan that
 produces two results:
 
@@ -11,11 +11,16 @@ produces two results:
 > reports what it *would* close and closes nothing. See
 > [Dry run](#dry-run-and-how-to-graduate) below.
 
+**[FEATURES.md](FEATURES.md) is the precise description of what this build
+does** — read that before installing. The rest of this file is how and why it is
+built that way.
+
 ## Install (unpacked)
 
-The target browsers for this project are **Edge** and **Brave**. Everything is
-plain MV3, so it should work in any Chromium browser, but Chrome is not being
-tested and its `chrome://`-specific new-tab URLs may never appear in practice.
+The target browsers are **Brave** and **Edge**. Everything is plain MV3, so it
+should work in any Chromium browser; Chrome simply is not what this is built for.
+Note that Brave reports `chrome://newtab/` to the extensions API despite showing
+`brave://` in the address bar, so the Chromium-internal URLs do matter.
 
 | Browser | Extensions page |
 | --- | --- |
@@ -26,48 +31,66 @@ tested and its `chrome://`-specific new-tab URLs may never appear in practice.
 2. Turn on **Developer mode**
 3. **Load unpacked** → select this repository's root folder
 
-**The extension requires no permissions at install time.** That is deliberate —
-see below.
+**The extension asks for one permission: `tabs`.** Your browser will describe it
+as *"Read your browsing history"*. That wording is alarming and worth
+understanding before you install — see below.
 
-### How to actually verify that
+### How to check what it actually got
 
-Loading unpacked never shows the install-time permission dialog, so seeing no
-warning during step 3 proves nothing. Check the effect directly:
+Loading unpacked never shows the install dialog, so what you see (or don't see)
+during step 3 proves nothing. Check directly:
 
 extensions page → **Details** on the Tab Cleanup card → **Permissions**
 
-Before you click the button, no required permissions are listed. After you grant
-`tabs`, it appears there as a toggle you can revoke — which is a good way to
-re-test the permission flow. `test/guards.test.js` asserts the cause (`manifest.json`
-declares no permissions and no host permissions); the Details page is where you
-confirm the browser agrees.
+Expect exactly one entry, and no host permissions. `test/guards.test.js` asserts
+the cause (`manifest.json` declares `tabs` and nothing else, no host permissions,
+no content scripts); the Details page is where you confirm the browser agrees.
 
-## Permissions: why there are none at install time
+## Permissions: why "Read your browsing history"
 
-`manifest.json` declares `"permissions": []`. The `tabs` permission is
-*optional* and is requested the first time you click the button:
+`manifest.json` declares exactly this:
 
 ```json
-"permissions": [],
-"optional_permissions": ["tabs"]
+"permissions": ["tabs"]
 ```
 
-This works because of a detail in the Chrome API: `chrome.tabs.query()`,
-`chrome.tabs.create()` and `chrome.tabs.getCurrent()` require **no permission at
-all**. The `tabs` permission exists only to un-redact four sensitive fields on
-the `Tab` objects they return — `url`, `pendingUrl`, `title` and `favIconUrl`.
-Reading URLs is exactly what this extension needs, and nothing more. Host
-permissions would also reveal URLs, but they grant far more (the ability to read
-and change page content), so `tabs` is the genuine minimum.
+The warning is real, but it is broader than what the extension does. Here is the
+mechanism, because the naming is genuinely misleading.
 
-Two consequences worth knowing:
+`chrome.tabs.query()`, `chrome.tabs.create()`, `chrome.tabs.getCurrent()` — and
+even `chrome.tabs.remove()` — require **no permission at all**. You can close
+tabs without asking for anything. The `tabs` permission does one thing: it
+un-redacts four fields on the `Tab` objects those calls return — `url`,
+`pendingUrl`, `title` and `favIconUrl`.
 
-- On some Chrome builds the permission prompt closes the popup. Re-open it — the
-  permission is already granted and the scan runs immediately.
-- Without the permission, `tab.url` is `undefined` rather than `''`. Left
-  unguarded, every tab in the browser would look like a blank new tab, so
-  `planCleanup()` throws `MissingTabsPermissionError` rather than producing a
-  catastrophically wrong plan.
+Chromium shows a warning for any permission that carries a warning string, and
+`tabs` carries the same one as the `history` permission. The reasoning is sound:
+an extension holding `tabs` can read the url and title of every tab, in every
+window, continuously — including on every navigation via `tabs.onUpdated`. That
+is a live feed of browsing activity, whether or not an extension uses it that
+way. This one reads urls at the moment you click the button, keeps nothing, and
+has no network access and no storage permission.
+
+**Alternatives, and why they do not work here:**
+
+| Option | Why not |
+| --- | --- |
+| `activeTab` | No warning at all, but covers only the current tab after a click. Finding duplicates *across windows* needs every tab. |
+| Narrow host permissions | Would reveal urls only on listed sites — useless for a general duplicate scan, and `chrome://newtab/` accepts no host permission at all. |
+| `<all_urls>` | Reveals urls, but also grants reading and changing page content. Strictly worse. |
+| Drop it entirely | Leaves `url`/`title` empty. The scan cannot identify a new tab or a duplicate. |
+
+So `tabs` is the genuine minimum for these two features. Every comparable
+extension (OneTab, Tab Wrangler) asks for at least the same.
+
+It was *optional* until 2026-08-06, requested on first click. That was dropped:
+the identical warning fired either way, just as a mid-session dialog instead of
+at install — the same disclosure, delivered more annoyingly.
+
+One consequence worth knowing: if you revoke `tabs` from the Details page,
+`tab.url` becomes `undefined` rather than `''`. Left unguarded every tab would
+look like a blank new tab, so `planCleanup()` throws `MissingTabsPermissionError`
+rather than producing a catastrophically wrong plan.
 
 ## What counts as an unused new tab
 
@@ -119,18 +142,26 @@ Three independent layers keep this build harmless:
    `{ closed: 0, wouldClose: [...] }`. The live branch is not written — it
    throws. Flipping the flag does not delete anything.
 3. `test/guards.test.js` fails the suite if any tab-closing call appears
-   anywhere in `src/`, and asserts the manifest still requests no permissions.
+   anywhere in `src/`, and asserts the manifest requests `tabs` and nothing
+   else — no host permissions, no content scripts.
 
-Because that guard matches `.remove(` in general, the DOM code uses
-`replaceChildren()` and `classList.toggle(name, on)` rather than
-`element.remove()` and `classList.remove()`. Keep it that way.
+The guard matches the patterns that reach `chrome.tabs.remove`: `tabs.remove`,
+`tabs[...]`, `chrome['tabs'].remove`, and destructuring `remove` off `tabs`.
+Ordinary DOM calls are fine.
+
+It previously banned `.remove(` outright, which also forbade `element.remove()`
+and `classList.remove()`. That was removed on 2026-08-06 — it distorted the UI
+code while still missing `chrome.tabs['remove']()`, so it cost readability and
+bought no safety. The existing `replaceChildren()` / `classList.toggle(name, on)`
+usage was left as-is because it is good modern DOM, not because it is required.
+Layer 2 is what actually holds.
 
 ### Graduation checklist
 
 Do not write the live close path until all of these hold:
 
 - [ ] `npm test` passes.
-- [ ] The Details page confirms no required permissions.
+- [ ] The Details page confirms `tabs` and no host permissions.
 - [ ] Dry run exercised against a real browser with several windows and 50+ tabs.
 - [ ] Every protection verified to fire: pinned, active, audible, grouped, sole
       tab in window.
@@ -149,25 +180,22 @@ npm test    # node --test, no dependencies
 
 ### Testing in a browser
 
-**Browser testing is manual.** It cannot be automated, and that is not a
-preference — Chromium removed the `--load-extension` command-line switch in
-version 137 because malware abused it, so no unpacked extension can be
-auto-installed into a scripted browser. Verified against Chrome 150 on Windows:
-the switch is silently ignored in both headful and headless mode, and the
-extension never registers in the profile. **Load unpacked** by hand is the only
-route.
+Partly automatable. The `--load-extension` switch was disabled in
+**Chrome-branded** builds at version 137, but not in Chromium — so Brave, Edge
+and Playwright's bundled Chromium all still honour it. Playwright can load the
+extension and drive its pages, pointed at the real browser via `executablePath`.
+Verified end-to-end against Brave 1.93.132 and Edge on 2026-08-06.
 
-See [TESTING.md](TESTING.md) for the step-by-step plan and a results template.
+What automation cannot do: click native browser dialogs, and judge whether a
+flagged tab was really junk. See [TESTING.md](TESTING.md) for both the scripted
+recipe and the manual plan.
 
 The short version:
 
-1. **Confirm what your browser calls its new tab page** before anything else —
-   see TESTING.md step 1. `NEW_TAB_URLS` in `src/lib/config.js` is unverified
-   for Edge and Brave, and if it is wrong the scan finds nothing at all.
-2. **Constructed scenario** — one pinned new tab, one in a tab group, one
+1. **Constructed scenario** — one pinned new tab, one in a tab group, one
    playing audio, one alone in its own window, one active. Every protection
    should fire exactly once and appear with its reason.
-3. **Your real browser**, where the actual tab mess lives. This surfaces false
+2. **Your real browser**, where the actual tab mess lives. This surfaces false
    positives a constructed scenario cannot, and the dry run makes it safe.
 
 The popup closes when it loses focus, which makes its console hard to reach.
@@ -189,7 +217,7 @@ src/
     scan.js          planCleanup() -> the whole plan      — pure
     execute.js       dry-run stub; cannot close a tab
     chrome-tabs.js   the only file that calls chrome.tabs
-    permissions.js   optional-permission handling
+    permissions.js   permission check (tabs is required, never prompts)
     format.js        display helpers + markdown report    — pure
   popup/             button, counts, protected list
   review/            full-page duplicate groups (read-only)

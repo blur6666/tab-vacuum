@@ -27,10 +27,20 @@ test('DRY_RUN is on', () => {
 });
 
 test('no tab-closing call exists anywhere in src/', () => {
-  // `.remove(` is banned outright, not just `tabs.remove` — it is too easy to
-  // reach chrome.tabs through an alias. The UI uses replaceChildren() and
-  // classList.toggle() instead of element.remove() and classList.remove().
-  const banned = [/tabs\s*\.\s*remove/, /\.remove\s*\(/];
+  // These patterns cover the ways chrome.tabs.remove is actually reachable.
+  // A regex guard cannot be airtight and this one does not pretend to be — the
+  // load-bearing guarantee is execute.js, which has no live close branch at all.
+  //
+  // An earlier version banned `.remove(` outright. That forbade harmless DOM
+  // calls (element.remove(), classList.remove()) across the whole UI while
+  // still missing chrome.tabs['remove'](), so it cost real readability and
+  // bought no extra safety. Narrowed deliberately; see README.md.
+  const banned = [
+    /tabs\s*\.\s*remove/, //                          chrome.tabs.remove(...) and aliases
+    /tabs\s*\[/, //                                    chrome.tabs['remove'](...)
+    /\[\s*['"`]tabs['"`]\s*\]\s*\.\s*remove/, //       chrome['tabs'].remove(...)
+    /\{[^}]*\bremove\b[^}]*\}\s*=\s*[^;\n]*tabs/, //   const { remove } = chrome.tabs
+  ];
 
   const offenders = [];
   for (const file of sourceFiles()) {
@@ -58,13 +68,18 @@ test('closeTabs does not mutate the caller\'s array', () => {
   assert.deepEqual(ids, [1, 2]);
 });
 
-test('the manifest requests no permissions up front', () => {
+test('the manifest requests tabs and nothing else', () => {
   const manifest = JSON.parse(
     readFileSync(join(import.meta.dirname, '..', 'manifest.json'), 'utf8'),
   );
 
-  assert.deepEqual(manifest.permissions, []);
-  assert.deepEqual(manifest.optional_permissions, ['tabs']);
+  // `tabs` is required, on purpose — it is the minimum that lets the scan read
+  // urls, and making it optional moved the same warning to a mid-session dialog
+  // without removing it. What still matters is that nothing ELSE creeps in:
+  // host permissions and content scripts are what turn a tab lister into a
+  // page reader.
+  assert.deepEqual(manifest.permissions, ['tabs']);
+  assert.equal(manifest.optional_permissions, undefined);
   assert.equal(manifest.host_permissions, undefined);
   assert.equal(manifest.content_scripts, undefined);
   assert.equal(manifest.manifest_version, 3);

@@ -15,8 +15,8 @@ let lastPlan = null;
 let windowNumbers = new Map();
 
 rescan.addEventListener('click', () => {
-  // Already inside a gesture, so requesting is safe if the permission was
-  // revoked while this page was open.
+  // `tabs` is required, so this never prompts — it re-checks in case the
+  // permission was revoked from the Details page while this tab sat open.
   requestTabsPermission()
     .then((ok) => (ok ? load() : needsPermission()))
     .catch(showError);
@@ -131,7 +131,8 @@ function numberWindows(plan) {
 
 function needsPermission() {
   status.textContent =
-    'Tab Cleanup needs the "tabs" permission to read tab URLs. Click Rescan to grant it.';
+    'Tab Cleanup needs the "tabs" permission to read tab URLs. It looks like it was ' +
+    'revoked — re-enable it on the extension\'s Details page, then click Rescan.';
   const empty = document.createElement('p');
   empty.className = 'empty';
   empty.textContent = 'Permission required.';

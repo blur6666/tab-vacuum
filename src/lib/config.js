@@ -15,6 +15,18 @@ export const DRY_RUN = true;
  *
  * `about:blank` is handled separately via TREAT_ABOUT_BLANK_AS_NEW_TAB.
  * The empty string (a tab with no committed URL yet) always counts.
+ *
+ * OBSERVED, by calling chrome.tabs.create({}) inside the extension and reading
+ * back what chrome.tabs reports (2026-08-06):
+ *
+ *   Edge                      -> 'edge://newtab/'
+ *   Brave 1.93.132            -> 'chrome://newtab/'   <- NOT 'brave://newtab/'
+ *
+ * Brave rewrites `brave://` for display, but the extensions API is given
+ * Chromium's internal `chrome://newtab/`. So the entry that actually saves
+ * Brave is `chrome://newtab`, not `brave://newtab`. The fork-specific entries
+ * below are kept because they cost nothing and a future build may change its
+ * mind, but only the two above are confirmed against a real browser.
  */
 export const NEW_TAB_URLS = [
   'chrome://newtab',

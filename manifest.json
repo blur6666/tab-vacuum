@@ -4,8 +4,7 @@
   "version": "0.1.0",
   "description": "Find unused new-tab pages and duplicate tabs across all your windows.",
   "minimum_chrome_version": "116",
-  "permissions": [],
-  "optional_permissions": ["tabs"],
+  "permissions": ["tabs"],
   "action": {
     "default_popup": "src/popup/popup.html",
     "default_title": "Tab Cleanup"

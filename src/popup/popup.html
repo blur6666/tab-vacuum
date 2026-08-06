@@ -12,7 +12,9 @@
         <h1>Tab Cleanup</h1>
       </header>
 
-      <button id="scan" class="primary" type="button">Scan my tabs</button>
+      <div id="scan-slot">
+        <button id="scan" class="primary" type="button">Scan my tabs</button>
+      </div>
 
       <p id="status" class="muted status"></p>
 
@@ -37,11 +39,13 @@
           <p id="duplicate-summary" class="muted small"></p>
         </div>
 
-        <button id="open-review" class="primary hidden" type="button">Review &amp; clean →</button>
+        <div class="action-buttons">
+          <button id="open-review" class="primary hidden" type="button">Review &amp; clean →</button>
+          <button id="copy" type="button" title="Copy the scan as markdown" class="secondary">⧉ Copy report</button>
+        </div>
 
         <footer>
-          <span class="muted small">Nothing closes without your confirmation.</span>
-          <button id="copy" type="button" title="Copy the scan as markdown">⧉ Copy report</button>
+          <span class="muted small">Nothing is closed \ without your confirmation.</span>
         </footer>
       </section>
     </main>

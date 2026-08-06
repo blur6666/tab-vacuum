@@ -6,7 +6,31 @@ main {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 12px;
+  padding: 0 12px 12px;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+#scan {
+  padding: 6px 10px;
+}
+
+#scan-slot {
+  display: flex;
+  justify-content: center;
+}
+
+#scan.primary {
+  width: 50%;
+}
+
+header #scan.secondary {
+  width: auto;
 }
 
 .status {
@@ -61,6 +85,22 @@ main {
 .detail-list li {
   margin-bottom: 2px;
 }
+
+
+
+button.secondary {
+  border-color: var(--muted);
+  color: dark(#ffffff, #10131a);
+  width: 50%;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
 
 footer {
   display: flex;

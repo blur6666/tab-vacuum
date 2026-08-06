@@ -21,6 +21,8 @@ const SCAN = 'Scan my tabs';
 const SCAN_AGAIN = 'Scan again';
 
 const scanButton = $('scan');
+const scanSlot = $('scan-slot');
+const popupHeader = document.querySelector('main > header');
 const status = $('status');
 const results = $('results');
 const toggleProtected = $('toggle-protected');
@@ -33,6 +35,7 @@ let lastPlan = null;
 // popup.html carries the same label so the button reads correctly before this
 // module runs; setting it here keeps the constants above the single source.
 scanButton.textContent = SCAN;
+positionScanButton();
 
 scanButton.addEventListener('click', () => {
   // `tabs` is a required permission, so this resolves true immediately and
@@ -64,9 +67,9 @@ function render(plan) {
   setStatus('');
   results.classList.toggle('hidden', false);
 
-  // A scan has landed and the results are on screen. The button's only job now
-  // is to run it again — "Review & clean →" is what moves you to the report.
   scanButton.textContent = SCAN_AGAIN;
+  scanButton.className = 'secondary';
+  positionScanButton();
 
   $('totals').textContent =
     `Scanned ${plan.totals.considered} tabs · ${plan.totals.windows} window` +
@@ -149,6 +152,14 @@ function showError(error) {
 
 function setStatus(text) {
   status.textContent = text;
+}
+
+function positionScanButton() {
+  if (scanButton.classList.contains('secondary')) {
+    popupHeader.append(scanButton);
+    return;
+  }
+  scanSlot.append(scanButton);
 }
 
 function describePerWindow(tabs) {

@@ -5,7 +5,7 @@
 Personal MV3 extension. One button, one scan, two results: unused new-tab pages
 and duplicate-URL groups, across all windows. It reports; it closes nothing.
 It runs against a real, messy profile, so being unable to do damage matters more
-than any feature. What the build does for a user: **FEATURES.md**.
+than any feature. What the build does for a user: **README.md**.
 
 ## Non-negotiable rules
 

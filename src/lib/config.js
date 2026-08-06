@@ -34,10 +34,18 @@ export const NEW_TAB_URLS = [
 
 export const TREAT_ABOUT_BLANK_AS_NEW_TAB = true;
 
-/** A new-tab page matching any enabled rule is never a close candidate. */
+/**
+ * A new-tab page matching any enabled rule is never a close candidate.
+ *
+ * `active` is off deliberately. Being the front tab of a window says nothing
+ * about whether a blank new-tab page is wanted — it is usually the opposite,
+ * the empty tab you left showing. Closing it just reveals the tab behind it,
+ * and `soleTabInWindow` still stops the case that would take a window with it.
+ * NEVER_CLOSE has never included `active` either, so the two now agree.
+ */
 export const PROTECT = {
   pinned: true,
-  active: true,
+  active: false,
   audible: true,
   grouped: true,
   soleTabInWindow: true,

@@ -46,7 +46,6 @@ test('a plain unused new tab is a close candidate', () => {
 test('each protection rule keeps a new tab and records its reason', () => {
   const cases = [
     ['pinned', { pinned: true }],
-    ['active', { active: true }],
     ['audible', { audible: true }],
     ['grouped', { groupId: 7 }],
   ];
@@ -72,11 +71,29 @@ test('the sole tab in a window is protected — closing it would close the windo
   assert.deepEqual(plan.protectedTabs[0].reasons, ['only tab in window']);
 });
 
-test('multiple protections are all reported', () => {
-  const junk = newTab({ pinned: true, active: true, audible: true, groupId: 3 });
+test('an active new tab is a candidate — being the front tab protects nothing', () => {
+  const junk = newTab({ active: true });
   const plan = planCleanup([junk, filler()]);
 
-  assert.deepEqual(plan.protectedTabs[0].reasons, ['pinned', 'active', 'audible', 'grouped']);
+  assert.deepEqual(plan.unusedNewTabs.map((t) => t.id), [junk.id]);
+  assert.equal(plan.protectedTabs.length, 0);
+});
+
+test('an active new tab alone in its window is still protected by soleTabInWindow', () => {
+  // The rule that actually mattered when `active` was a protection: closing it
+  // would take the window with it.
+  const lonely = newTab({ active: true, windowId: 42 });
+  const plan = planCleanup([lonely, filler(1), filler(1)]);
+
+  assert.equal(plan.unusedNewTabs.length, 0);
+  assert.deepEqual(plan.protectedTabs[0].reasons, ['only tab in window']);
+});
+
+test('multiple protections are all reported', () => {
+  const junk = newTab({ pinned: true, audible: true, groupId: 3 });
+  const plan = planCleanup([junk, filler()]);
+
+  assert.deepEqual(plan.protectedTabs[0].reasons, ['pinned', 'audible', 'grouped']);
 });
 
 test('the review page protects itself', () => {

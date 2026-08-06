@@ -42,11 +42,12 @@ A qualifying tab is **excluded and shown separately with its reason** when any o
 | Protection | Reason shown |
 | --- | --- |
 | Pinned | `pinned` |
-| Active in its window | `active` |
 | Playing audio | `audible` |
 | In a tab group | `grouped` |
 | The only tab in its window | `only tab in window` |
 | The extension's own review page | `extension page` |
+
+**Being the active tab is not a protection.** A blank new-tab page sitting at the front of a window is usually exactly the tab you meant to be rid of, and closing it just reveals the tab behind it. The case that genuinely mattered — the active tab being the *only* tab, so closing it closes the window — is still covered by `only tab in window`. `PROTECT.active` in `src/lib/config.js` turns it back on.
 
 Protected tabs are always listed rather than silently dropped — greyed, marked ⚠ with the reason, and with the checkbox disabled so no bulk action can reach them. The rules stay visible and can be tuned in `src/lib/config.js`.
 
@@ -143,7 +144,7 @@ Two things automation cannot judge:
 
 ## Development
 
-`npm test` — `node --test`, no dependencies. 53 tests: URL heuristics, every protection rule, keeper selection, per-group deduplication, the permission interlock, and the close path with injected fakes so no browser is needed.
+`npm test` — `node --test`, no dependencies. 62 tests: URL heuristics, every protection rule, keeper selection, per-group deduplication, the permission interlock, the guarantee that context-only rows stay unreachable, and the close path with injected fakes so no browser is needed.
 
 Browser testing is **partly** automatable: Brave and Edge still honour `--load-extension`, so Playwright can load the extension and drive its pages (CLAUDE.md explains why Chrome-branded builds cannot). Install Playwright **outside this repo** so the project stays dependency-free:
 

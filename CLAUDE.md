@@ -3,7 +3,8 @@
 ## Purpose
 
 Personal MV3 extension. When you press "Clean tabs" it scans all tabs of all windows of the profile you're using in the browser and lists the results in two groups:
-unused new-tab pages and and duplicate-URL groups, across` all windows. It reports; and lets you analyze one by one or you can click the button Kill 'Em All. To remove all of the duplicates and unused tabs. 
+
+Unused new-tab pages and and duplicate-URL groups, across` all windows. It reports; and lets you analyze one by one or you can click the button Kill 'Em All! To remove all of the duplicates (except one copy) and unused tabs. 
 
 ## Rules
 

@@ -1,8 +1,8 @@
 # Tab Cleanup
 
-A Chromium extension that finds junk tabs across all your windows: new-tab pages you never used, and groups of tabs pointing at the same page.
+A Chromium extension that finds junk tabs across all your windows: new-tab pages you never used, browser-internal pages like Settings and Downloads, and groups of tabs pointing at the same page.
 
-It finds candidates first and closes nothing on its own. You either tick the ones you want gone, or press **Kill 'Em All** to take every duplicate except one copy per group, plus the unused new tabs. Both routes need a second click to confirm.
+It finds candidates first and closes nothing on its own. You either tick the ones you want gone, use a section's own **select all** plus **Close selected**, or press **Kill 'Em All** to take every duplicate except one copy per group, plus the unused new tabs. Every route needs a second click to confirm.
 
 ## Install (unpacked)
 
@@ -24,7 +24,7 @@ The popup only ever reports. **Review & clean →** opens a full page listing ev
 
 Every row on the review page shows which tab group it belongs to — `g1`, `g2`, … numbered stably across the whole report, or `—` for an ungrouped tab. Grant the optional `tabGroups` permission and the column reads `g1 · Work` in the group's own colour instead. The browser's own group id is in the tooltip, which is what the copied report lists.
 
-**Only tabs up for deletion**, the checkbox in the page header, is ticked when the page loads and limits the page to what you can act on. Untick it to add an **Other tabs** section listing every remaining tab in the profile with the reason it is not on offer — `only copy` for a page open exactly once, `not scanned for duplicates` for anything outside `http`/`https`. Those rows are context only: greyed, checkbox disabled, and unreachable by **Kill 'Em All** or any other bulk action. Toggling the filter re-renders what is already on screen; it does not rescan and does not disturb your selection.
+**Only tabs up for deletion**, the checkbox in the page header, is ticked when the page loads and limits the page to what you can act on. Untick it to add an **Other tabs** section listing every remaining tab in the profile with the reason it is not on offer — `only copy` for a page open exactly once, `not scanned for duplicates` for anything outside `http`/`https` that isn't a recognised system page either (a `file://` URL, for instance). Those rows are context only: greyed, checkbox disabled, and unreachable by **Kill 'Em All** or any other bulk action. Toggling the filter re-renders what is already on screen; it does not rescan and does not disturb your selection.
 
 Excluded from the scan entirely:
 
@@ -53,7 +53,17 @@ Protected tabs are always listed rather than silently dropped — greyed, marked
 
 **Known limitation.** Chromium exposes no per-tab navigation history, so "never used" is not directly observable. **A tab you used and then navigated back to a new-tab page is indistinguishable from a fresh one.** The URL is the strongest signal available without additional permissions, which is why this result is a suggestion rather than a verdict. `lastAccessed` is displayed as context and is never used as a filter.
 
-### Result 2 — duplicate tabs
+### Result 2 — system tabs
+
+Browser-internal pages that are not the new-tab page but are not real content either — Settings, Downloads, History, Extensions, Bookmarks, and whatever else ships under the browser's own scheme. Matched by URL scheme (`SYSTEM_URL_SCHEMES` in `src/lib/config.js`: `chrome:`, `edge:`, `brave:`, `vivaldi:`, `opera:`), not by path, so a future built-in page needs no update to be caught.
+
+`chrome-extension:` is deliberately excluded — that scheme covers every installed extension's own pages, not the browser's built-in ones, and lumping them in would turn an ordinary extension's options page into a "system" tab.
+
+Protected by the same rules and for the same reasons as unused new tabs — pinned, audible, grouped, or the only tab in its window — since a system tab is a single-instance offer, not a duplicate-group member.
+
+Kept out of **Kill 'Em All** on purpose: Settings or Downloads sitting open is a far more ordinary, intentional thing than a stray blank new-tab page, so this section gets its own **select all** button feeding the same **Close selected** confirm, rather than riding along with the one-click danger button.
+
+### Result 3 — duplicate tabs
 
 Only `http` and `https` tabs participate. They are grouped by a normalised URL:
 

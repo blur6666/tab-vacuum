@@ -14,6 +14,7 @@ const $ = (id) => document.getElementById(id);
 
 const groupsEl = $('groups');
 const newTabsEl = $('new-tabs');
+const systemTabsEl = $('system-tabs');
 const otherTabsEl = $('other-tabs');
 const onlyActionable = $('only-actionable');
 const summary = $('summary');
@@ -73,8 +74,10 @@ function render(plan) {
   disarmAll();
 
   const duplicateTabs = plan.duplicateGroups.reduce((sum, group) => sum + group.count, 0);
+  const systemTabs = plan.systemTabs ?? [];
   const parts = [];
   if (plan.unusedNewTabs.length) parts.push(`${plan.unusedNewTabs.length} unused new tabs`);
+  if (systemTabs.length) parts.push(`${systemTabs.length} system tabs`);
   if (plan.duplicateGroups.length) {
     parts.push(
       `${plan.duplicateGroups.length} duplicate group` +
@@ -87,10 +90,12 @@ function render(plan) {
     : `Scanned ${plan.totals.considered} tabs. Nothing to clean up.`;
 
   renderNewTabs(plan);
+  renderSystemTabs(plan);
   renderDuplicates(plan);
   renderOther(plan);
 
-  const hasAnything = plan.unusedNewTabs.length > 0 || plan.duplicateGroups.length > 0;
+  const hasAnything =
+    plan.unusedNewTabs.length > 0 || systemTabs.length > 0 || plan.duplicateGroups.length > 0;
   $('empty').classList.toggle('hidden', hasAnything);
   actionBar.classList.toggle('hidden', !hasAnything);
 
@@ -115,6 +120,20 @@ function renderNewTabs(plan) {
 
   newTabsEl.replaceChildren(...rows);
   $('new-tabs-section').classList.toggle('hidden', rows.length === 0);
+}
+
+function renderSystemTabs(plan) {
+  const rows = [
+    ...(plan.systemTabs ?? []).map((tab) =>
+      renderRow(tab, { label: tab.title || prettyUrl(tab.url) }),
+    ),
+    ...(plan.protectedSystemTabs ?? []).map((tab) =>
+      renderRow(tab, { label: tab.title || prettyUrl(tab.url), protections: tab.reasons }),
+    ),
+  ];
+
+  systemTabsEl.replaceChildren(...rows);
+  $('system-tabs-section').classList.toggle('hidden', rows.length === 0);
 }
 
 function renderDuplicates(plan) {
@@ -302,9 +321,11 @@ for (const button of document.querySelectorAll('.select-all')) {
     const ids =
       button.dataset.scope === 'new-tabs'
         ? lastPlan.unusedNewTabs.filter((tab) => tab.closable).map((tab) => tab.id)
-        : lastPlan.duplicateGroups.flatMap((group) =>
-            group.tabs.filter((tab) => tab.closable && !tab.isKeeper).map((tab) => tab.id),
-          );
+        : button.dataset.scope === 'system-tabs'
+          ? (lastPlan.systemTabs ?? []).filter((tab) => tab.closable).map((tab) => tab.id)
+          : lastPlan.duplicateGroups.flatMap((group) =>
+              group.tabs.filter((tab) => tab.closable && !tab.isKeeper).map((tab) => tab.id),
+            );
 
     toggleSelection(ids);
   });
@@ -489,6 +510,8 @@ function everyReportedTab(plan) {
   return [
     ...plan.unusedNewTabs,
     ...plan.protectedTabs,
+    ...(plan.systemTabs ?? []),
+    ...(plan.protectedSystemTabs ?? []),
     ...(plan.otherTabs ?? []),
     ...plan.duplicateGroups.flatMap((group) => group.tabs),
   ];

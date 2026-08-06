@@ -77,6 +77,26 @@ export function planToMarkdown(plan) {
   }
   lines.push('');
 
+  const systemTabs = plan.systemTabs ?? [];
+  lines.push(`## System tabs — ${systemTabs.length} offered`);
+  if (systemTabs.length === 0) lines.push('_none_');
+  for (const tab of systemTabs) {
+    lines.push(
+      `- window ${tab.windowId} · tab ${tab.id}${describeGroup(tab.groupId)} · \`${tab.url}\``,
+    );
+  }
+  lines.push('');
+
+  const protectedSystemTabs = plan.protectedSystemTabs ?? [];
+  lines.push(`## Protected system tabs — ${protectedSystemTabs.length} kept`);
+  if (protectedSystemTabs.length === 0) lines.push('_none_');
+  for (const tab of protectedSystemTabs) {
+    lines.push(
+      `- window ${tab.windowId} · tab ${tab.id}${describeGroup(tab.groupId)} · ${tab.reasons.join(', ')}`,
+    );
+  }
+  lines.push('');
+
   lines.push(`## Duplicate groups — ${plan.duplicateGroups.length}`);
   if (plan.duplicateGroups.length === 0) lines.push('_none_');
   for (const group of plan.duplicateGroups) {

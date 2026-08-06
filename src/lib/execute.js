@@ -32,6 +32,9 @@ export function closableTabs(plan) {
   for (const tab of plan.unusedNewTabs) {
     if (tab.closable) closable.set(tab.id, tab);
   }
+  for (const tab of plan.systemTabs ?? []) {
+    if (tab.closable) closable.set(tab.id, tab);
+  }
   for (const group of plan.duplicateGroups) {
     for (const tab of group.tabs) {
       if (tab.closable) closable.set(tab.id, tab);
@@ -45,9 +48,11 @@ export function closableTabs(plan) {
  * What "Kill 'Em All" selects: every unused new tab, plus every duplicate
  * except the one copy each group keeps.
  *
- * Excluding keepers is what makes the bulk path safe by construction — it
- * cannot empty a duplicate group however the protections fall. Ticking a
- * keeper by hand is still allowed; that is a deliberate one-by-one decision.
+ * System tabs are deliberately not included — Settings or Downloads sitting
+ * open is a much more common, intentional thing than a stray new-tab page,
+ * so that section gets its own "select all" instead of riding along with the
+ * one-click danger button. closableTabs() still includes them, so ticking
+ * one by hand and using "Close selected" works the same as anything else.
  */
 export function bulkSelection(plan) {
   const ids = [];
@@ -90,6 +95,9 @@ export function selectClosable(plan, ids) {
 function protectionFor(plan, id) {
   const protectedTab = plan.protectedTabs.find((tab) => tab.id === id);
   if (protectedTab) return protectedTab.reasons.join(', ');
+
+  const protectedSystemTab = (plan.protectedSystemTabs ?? []).find((tab) => tab.id === id);
+  if (protectedSystemTab) return protectedSystemTab.reasons.join(', ');
 
   for (const group of plan.duplicateGroups) {
     const tab = group.tabs.find((candidate) => candidate.id === id);
@@ -147,6 +155,7 @@ function urlsById(plan) {
   const urls = new Map();
 
   for (const tab of plan.unusedNewTabs) urls.set(tab.id, tab.url);
+  for (const tab of plan.systemTabs ?? []) urls.set(tab.id, tab.url);
   for (const group of plan.duplicateGroups) {
     for (const tab of group.tabs) urls.set(tab.id, tab.url);
   }

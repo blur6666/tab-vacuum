@@ -55,20 +55,20 @@ test('tabs shown only for context can never be closed by any path', async () => 
   // are report, not offer — nothing about showing them may make them reachable.
   const junk = tab({ url: 'chrome://newtab/', index: 0 });
   const lone = tab({ url: 'https://example.com/unique', index: 1 });
-  const settings = tab({ url: 'chrome://settings/', index: 2 });
-  const tabs = [junk, lone, settings];
+  const notes = tab({ url: 'file:///home/user/notes.txt', index: 2 });
+  const tabs = [junk, lone, notes];
 
   const plan = planCleanup(tabs);
-  assert.deepEqual(plan.otherTabs.map((t) => t.id), [lone.id, settings.id]);
+  assert.deepEqual(plan.otherTabs.map((t) => t.id), [lone.id, notes.id]);
 
   const offered = closableTabs(plan);
   assert.equal(offered.has(lone.id), false);
-  assert.equal(offered.has(settings.id), false);
+  assert.equal(offered.has(notes.id), false);
   assert.deepEqual(bulkSelection(plan), [junk.id]);
 
   // Even asked for by id directly — a stale or hand-crafted selection.
   const closer = spyCloser();
-  const result = await closeTabs(plan, [lone.id, settings.id], {
+  const result = await closeTabs(plan, [lone.id, notes.id], {
     closer,
     snapshot: unchanged(tabs),
   });
@@ -79,6 +79,33 @@ test('tabs shown only for context can never be closed by any path', async () => 
     result.skipped.map((s) => s.reason),
     ['not in the scan', 'not in the scan'],
   );
+});
+
+test('a system tab is closable on its own but is not part of Kill Em All', async () => {
+  const settings = tab({ url: 'chrome://settings/' });
+  const plan = planCleanup([settings, tab({ url: 'https://filler.example/' })]);
+
+  assert.ok(closableTabs(plan).has(settings.id), 'can be ticked and closed by hand');
+  assert.deepEqual(bulkSelection(plan), [], "Kill Em All doesn't reach for system tabs");
+
+  const closer = spyCloser();
+  const result = await closeTabs(plan, [settings.id], {
+    closer,
+    snapshot: unchanged([settings, tab({ url: 'https://filler.example/' })]),
+  });
+
+  assert.equal(result.closed, 1);
+  assert.deepEqual(closer.calls, [[settings.id]]);
+});
+
+test('a protected system tab is refused and repeats its reason', () => {
+  const pinnedSettings = tab({ url: 'chrome://settings/', pinned: true });
+  const plan = planCleanup([pinnedSettings, tab({ url: 'https://filler.example/' })]);
+
+  const { close, refused } = selectClosable(plan, [pinnedSettings.id]);
+
+  assert.deepEqual(close, []);
+  assert.deepEqual(refused, [{ id: pinnedSettings.id, reason: 'pinned' }]);
 });
 
 test('selectClosable keeps ids the scan offered and refuses the rest', () => {

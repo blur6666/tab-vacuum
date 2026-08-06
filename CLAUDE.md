@@ -2,9 +2,9 @@
 
 ## Purpose
 
-Personal MV3 extension. When you press "Scan my tabs" it scans every tab of every normal window in the profile you are using, and reports two things: unused new-tab pages, and duplicate-URL groups. Once results are showing, that button reads "Scan again" — it re-scans in place and never navigates; "Review & clean →" is the only thing that opens the report.
+Personal MV3 extension. When you press "Scan my tabs" it scans every tab of every normal window in the profile you are using, and reports three things: unused new-tab pages, system tabs (Settings, Downloads, History, Extensions, and similar built-in pages, matched by `SYSTEM_URL_SCHEMES` in `src/lib/config.js`), and duplicate-URL groups. Once results are showing, that button reads "Scan again" — it re-scans in place and never navigates; "Review & clean →" is the only thing that opens the report.
 
-It only reports. Acting happens on the review page, where you can go through them one by one and tick what you want gone, or click **Kill 'Em All!** to take every duplicate except one copy per group, plus the unused new tabs.
+It only reports. Acting happens on the review page, where you can go through them one by one and tick what you want gone, use the System tabs section's own **select all** plus **Close selected**, or click **Kill 'Em All!** to take every duplicate except one copy per group, plus the unused new tabs. System tabs are deliberately outside Kill 'Em All's reach — Settings or Downloads sitting open is usually intentional, unlike a stray blank tab, so it gets its own opt-in rather than riding along with the one-click danger button.
 
 ## Rules
 

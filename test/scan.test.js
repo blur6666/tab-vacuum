@@ -295,9 +295,71 @@ test('an empty browser produces an empty plan', () => {
 
   assert.deepEqual(plan.unusedNewTabs, []);
   assert.deepEqual(plan.protectedTabs, []);
+  assert.deepEqual(plan.systemTabs, []);
+  assert.deepEqual(plan.protectedSystemTabs, []);
   assert.deepEqual(plan.otherTabs, []);
   assert.deepEqual(plan.duplicateGroups, []);
   assert.deepEqual(plan.totals, { windows: 0, tabs: 0, considered: 0, skippedIncognito: 0 });
+});
+
+test('a browser-internal page is a system tab, offered like an unused new tab', () => {
+  const settings = tab({ url: 'chrome://settings/', title: 'Settings' });
+  const plan = planCleanup([settings, filler()]);
+
+  assert.deepEqual(plan.systemTabs.map((t) => t.id), [settings.id]);
+  assert.equal(plan.systemTabs[0].closable, true);
+  assert.equal(plan.protectedSystemTabs.length, 0);
+  assert.equal(
+    plan.otherTabs.some((t) => t.id === settings.id),
+    false,
+    'a system page is not "other" — it has its own bucket',
+  );
+});
+
+test('Edge, Brave, Vivaldi and Opera internal pages are all system tabs', () => {
+  for (const url of [
+    'edge://settings/',
+    'brave://settings/',
+    'vivaldi://settings/',
+    'opera://settings/',
+  ]) {
+    const settings = tab({ url });
+    const plan = planCleanup([settings, filler()]);
+    assert.deepEqual(plan.systemTabs.map((t) => t.id), [settings.id], url);
+  }
+});
+
+test('an extension\'s own page is not a system tab', () => {
+  const options = tab({ url: 'chrome-extension://abcdefghijklmnop/options.html' });
+  const plan = planCleanup([options, filler()]);
+
+  assert.equal(plan.systemTabs.length, 0);
+  assert.equal(plan.otherTabs.some((t) => t.id === options.id), true);
+});
+
+test('each protection rule keeps a system tab and records its reason', () => {
+  const cases = [
+    ['pinned', { pinned: true }],
+    ['audible', { audible: true }],
+    ['grouped', { groupId: 7 }],
+  ];
+
+  for (const [reason, overrides] of cases) {
+    const settings = tab({ url: 'chrome://settings/', ...overrides });
+    const plan = planCleanup([settings, filler()]);
+
+    assert.equal(plan.systemTabs.length, 0, `${reason} should not be a candidate`);
+    assert.deepEqual(plan.protectedSystemTabs.map((t) => t.id), [settings.id]);
+    assert.ok(plan.protectedSystemTabs[0].reasons.includes(reason));
+  }
+});
+
+test('a system tab alone in its window is protected', () => {
+  const lonely = tab({ url: 'chrome://downloads/', windowId: 42 });
+  const plan = planCleanup([lonely, filler(1), filler(1)]);
+
+  assert.equal(plan.systemTabs.length, 0);
+  assert.deepEqual(plan.protectedSystemTabs[0].reasons, ['only tab in window']);
 });
 
 test('every considered tab is reported somewhere — the report can show them all', () => {
@@ -306,12 +368,15 @@ test('every considered tab is reported somewhere — the report can show them al
   const dupes = [2, 3].map((index) => tab({ url: 'https://example.com/dup', index }));
   const lone = tab({ url: 'https://example.com/unique', index: 4 });
   const settings = tab({ url: 'chrome://settings/', index: 5 });
+  const guardedSettings = tab({ url: 'chrome://downloads/', index: 6, pinned: true });
 
-  const plan = planCleanup([junk, guarded, ...dupes, lone, settings]);
+  const plan = planCleanup([junk, guarded, ...dupes, lone, settings, guardedSettings]);
 
   const reported = [
     ...plan.unusedNewTabs,
     ...plan.protectedTabs,
+    ...plan.systemTabs,
+    ...plan.protectedSystemTabs,
     ...plan.otherTabs,
     ...plan.duplicateGroups.flatMap((group) => group.tabs),
   ].map((t) => t.id);
@@ -319,21 +384,21 @@ test('every considered tab is reported somewhere — the report can show them al
   assert.equal(reported.length, plan.totals.considered, 'no tab reported twice');
   assert.deepEqual(
     [...reported].sort((a, b) => a - b),
-    [junk, guarded, ...dupes, lone, settings].map((t) => t.id).sort((a, b) => a - b),
+    [junk, guarded, ...dupes, lone, settings, guardedSettings].map((t) => t.id).sort((a, b) => a - b),
   );
 });
 
 test('other tabs say why they are not on offer, and are never closable', () => {
   const lone = tab({ url: 'https://example.com/unique', index: 0 });
-  const settings = tab({ url: 'chrome://settings/', index: 1 });
+  const notes = tab({ url: 'file:///home/user/notes.txt', index: 1 });
 
-  const plan = planCleanup([lone, settings, ...[2, 3].map((index) => newTab({ index }))]);
+  const plan = planCleanup([lone, notes, ...[2, 3].map((index) => newTab({ index }))]);
 
   assert.deepEqual(
     plan.otherTabs.map((t) => [t.id, t.reason, t.closable]),
     [
       [lone.id, 'only copy', false],
-      [settings.id, 'not scanned for duplicates', false],
+      [notes.id, 'not scanned for duplicates', false],
     ],
   );
 });

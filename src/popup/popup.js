@@ -82,7 +82,13 @@ function render(plan) {
     ? describePerWindow(plan.unusedNewTabs)
     : 'No unused new tabs found.';
 
-  renderProtected(plan.protectedTabs);
+  const systemTabs = plan.systemTabs ?? [];
+  $('system-tab-count').textContent = String(systemTabs.length);
+  $('system-tab-summary').textContent = systemTabs.length
+    ? describePerWindow(systemTabs)
+    : 'No system tabs found.';
+
+  renderProtected([...plan.protectedTabs, ...(plan.protectedSystemTabs ?? [])]);
 
   const duplicateTabs = plan.duplicateGroups.reduce((sum, group) => sum + group.count, 0);
   $('duplicate-count').textContent = String(plan.duplicateGroups.length);
@@ -93,7 +99,8 @@ function render(plan) {
 
   // The review page is the only place anything closes, so offer it whenever
   // there is something to act on — not just when there are duplicates.
-  const hasAnything = plan.unusedNewTabs.length > 0 || plan.duplicateGroups.length > 0;
+  const hasAnything =
+    plan.unusedNewTabs.length > 0 || systemTabs.length > 0 || plan.duplicateGroups.length > 0;
   openReview.classList.toggle('hidden', !hasAnything);
 }
 

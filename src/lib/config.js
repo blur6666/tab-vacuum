@@ -35,7 +35,26 @@ export const NEW_TAB_URLS = [
 export const TREAT_ABOUT_BLANK_AS_NEW_TAB = true;
 
 /**
- * A new-tab page matching any enabled rule is never a close candidate.
+ * Browser-internal pages that are not the new-tab page but are not real
+ * browsing either — Settings, Downloads, History, Extensions, Bookmarks, and
+ * whatever else ships under the browser's own scheme. Matched by scheme, not
+ * by path, so a future Chromium build adding another built-in page needs no
+ * update here.
+ *
+ * `chrome-extension:` is deliberately absent — that scheme covers every
+ * installed extension's own pages, not the browser's built-in ones. Including
+ * it would turn an ordinary extension's options page into a "system" tab.
+ *
+ * Same Brave/Edge quirk as NEW_TAB_URLS applies: the extensions API reports
+ * Brave's own pages under `chrome:` regardless of what `brave://` shows in
+ * the address bar, so `chrome:` is the entry that actually matches there too.
+ */
+export const SYSTEM_URL_SCHEMES = ['chrome:', 'edge:', 'brave:', 'vivaldi:', 'opera:'];
+
+/**
+ * A new-tab page matching any enabled rule is never a close candidate. Also
+ * governs system tabs (Settings, Downloads, ...) — both are single-instance
+ * offers rather than duplicate-group members, so the same protections apply.
  *
  * `active` is off deliberately. Being the front tab of a window says nothing
  * about whether a blank new-tab page is wanted — it is usually the opposite,

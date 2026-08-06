@@ -1,11 +1,12 @@
 /**
- * The core decision logic: one pass over the tab list produces both features.
+ * The core decision logic: one pass over the tab list produces all three
+ * features — unused new tabs, system tabs, and duplicate groups.
  *
  * Pure — takes plain `Tab`-shaped objects, returns a plain plan object, and
  * never touches the `chrome` global so `node --test` can import it directly.
  */
 
-import { isNewTabUrl, normalizeUrl } from './url.js';
+import { isNewTabUrl, isSystemPageUrl, normalizeUrl } from './url.js';
 import {
   PROTECT,
   NEVER_CLOSE,
@@ -60,6 +61,8 @@ export function planCleanup(tabs, { selfTabId = null } = {}) {
 
   const unusedNewTabs = [];
   const protectedTabs = [];
+  const systemTabs = [];
+  const protectedSystemTabs = [];
   const otherTabs = [];
   const groupsByKey = new Map();
 
@@ -70,6 +73,18 @@ export function planCleanup(tabs, { selfTabId = null } = {}) {
         protectedTabs.push({ ...summarize(tab), reasons, closable: false });
       } else {
         unusedNewTabs.push({ ...summarize(tab), closable: true });
+      }
+      continue;
+    }
+
+    // Settings, Downloads, Extensions, ... — a single-instance offer like an
+    // unused new tab, not a candidate for duplicate detection.
+    if (isSystemPageUrl(tab.url)) {
+      const reasons = protectionReasons(tab, tabsPerWindow, selfTabId);
+      if (reasons.length > 0) {
+        protectedSystemTabs.push({ ...summarize(tab), reasons, closable: false });
+      } else {
+        systemTabs.push({ ...summarize(tab), closable: true });
       }
       continue;
     }
@@ -120,6 +135,8 @@ export function planCleanup(tabs, { selfTabId = null } = {}) {
     },
     unusedNewTabs,
     protectedTabs,
+    systemTabs,
+    protectedSystemTabs,
     otherTabs,
     duplicateGroups,
   };

@@ -46,7 +46,7 @@ test('planToMarkdown reports what the scan found', () => {
 test('planToMarkdown lists the tabs nothing can be done to, with their group', () => {
   const plan = planCleanup([
     { id: 1, windowId: 1, index: 0, url: 'https://example.com/only', title: 'Only', groupId: 6 },
-    { id: 2, windowId: 1, index: 1, url: 'chrome://settings/', title: 'Settings', groupId: -1 },
+    { id: 2, windowId: 1, index: 1, url: 'file:///home/user/notes.txt', title: 'Notes', groupId: -1 },
   ]);
 
   const report = planToMarkdown(plan);
@@ -54,6 +54,20 @@ test('planToMarkdown lists the tabs nothing can be done to, with their group', (
   assert.match(report, /## Other tabs — 2 not up for deletion/);
   assert.match(report, /tab 1 · tab group 6 · only copy/);
   assert.match(report, /tab 2 · not scanned for duplicates/);
+});
+
+test('planToMarkdown reports system tabs separately from other tabs', () => {
+  const plan = planCleanup([
+    { id: 1, windowId: 1, index: 0, url: 'chrome://settings/', title: 'Settings', groupId: -1 },
+    { id: 2, windowId: 1, index: 1, url: 'chrome://downloads/', title: 'Downloads', groupId: -1, pinned: true },
+  ]);
+
+  const report = planToMarkdown(plan);
+
+  assert.match(report, /## System tabs — 1 offered/);
+  assert.match(report, /tab 1 · `chrome:\/\/settings\/`/);
+  assert.match(report, /## Protected system tabs — 1 kept/);
+  assert.match(report, /tab 2 · pinned/);
 });
 
 test('planToMarkdown names the tab group and flags protected copies', () => {

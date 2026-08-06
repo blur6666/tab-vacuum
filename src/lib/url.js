@@ -6,6 +6,7 @@
 import {
   NEW_TAB_URLS,
   TREAT_ABOUT_BLANK_AS_NEW_TAB,
+  SYSTEM_URL_SCHEMES,
   DUPLICATE_SCHEMES,
   TRACKING_PARAMS,
   TRACKING_PARAM_PREFIXES,
@@ -40,6 +41,24 @@ export function isNewTabUrl(url) {
   if (s === '') return true;
   if (s === 'about:blank') return TREAT_ABOUT_BLANK_AS_NEW_TAB;
   return NEW_TAB_SET.has(s);
+}
+
+/**
+ * Is this a browser-internal page (Settings, Downloads, Extensions, ...)
+ * rather than real content? Checked by scheme only — never called on a
+ * new-tab URL, since isNewTabUrl runs first and both can share `chrome:`.
+ */
+export function isSystemPageUrl(url) {
+  if (typeof url !== 'string' || url === '') return false;
+
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+
+  return SYSTEM_URL_SCHEMES.includes(parsed.protocol);
 }
 
 function isTrackingParam(name) {

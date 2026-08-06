@@ -11,6 +11,15 @@ import { planToMarkdown, prettyUrl } from '../lib/format.js';
 
 const $ = (id) => document.getElementById(id);
 
+/**
+ * The button says what it does, and says it again honestly on the second press.
+ * Once results are on screen, pressing it re-scans — it does not open the
+ * review page, so "Scan again" is what it actually is. The popup is discarded
+ * when it loses focus, so this resets to SCAN on its own with no state to keep.
+ */
+const SCAN = 'Scan my tabs';
+const SCAN_AGAIN = 'Scan again';
+
 const scanButton = $('scan');
 const status = $('status');
 const results = $('results');
@@ -20,6 +29,10 @@ const openReview = $('open-review');
 const copyButton = $('copy');
 
 let lastPlan = null;
+
+// popup.html carries the same label so the button reads correctly before this
+// module runs; setting it here keeps the constants above the single source.
+scanButton.textContent = SCAN;
 
 scanButton.addEventListener('click', () => {
   // `tabs` is a required permission, so this resolves true immediately and
@@ -50,6 +63,10 @@ async function scan() {
 function render(plan) {
   setStatus('');
   results.classList.toggle('hidden', false);
+
+  // A scan has landed and the results are on screen. The button's only job now
+  // is to run it again — "Review & clean →" is what moves you to the report.
+  scanButton.textContent = SCAN_AGAIN;
 
   $('totals').textContent =
     `Scanned ${plan.totals.considered} tabs · ${plan.totals.windows} window` +

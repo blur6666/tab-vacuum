@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Personal MV3 extension. When you press "Clean up my tabs" it scans every tab of every normal window in the profile you are using, and reports two things: unused new-tab pages, and duplicate-URL groups.
+Personal MV3 extension. When you press "Scan my tabs" it scans every tab of every normal window in the profile you are using, and reports two things: unused new-tab pages, and duplicate-URL groups. Once results are showing, that button reads "Scan again" — it re-scans in place and never navigates; "Review & clean →" is the only thing that opens the report.
 
 It only reports. Acting happens on the review page, where you can go through them one by one and tick what you want gone, or click **Kill 'Em All!** to take every duplicate except one copy per group, plus the unused new tabs.
 

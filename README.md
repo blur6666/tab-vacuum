@@ -16,7 +16,9 @@ That warning is broader than what the extension does, and the naming is genuinel
 
 ## Using the extension
 
-Open the extension on the top right, popup, click **Clean up my tabs**. The extension reads every tab in every normal browser window using the same profile as you and produces the results below. Nothing runs in the background — there is no service worker, and no scan happens unless you click. WYSIWYG
+Open the extension on the top right, popup, click **Scan my tabs**. The extension reads every tab in every normal browser window using the same profile as you and produces the results below. Nothing runs in the background — there is no service worker, and no scan happens unless you click. WYSIWYG
+
+Once results are showing, that same button reads **Scan again** — pressing it re-runs the scan in place. **Review & clean →** is the one that moves you to the report.
 
 The popup only ever reports. **Review & clean →** opens a full page listing everything it found, and that page is the only place anything closes.
 

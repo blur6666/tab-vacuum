@@ -2,7 +2,7 @@
 
 A Chromium extension that finds junk tabs across all your windows: new-tab pages you never used, and groups of tabs pointing at the same page.
 
-> **This build cannot close a tab.** It is meant to report suggestions of possibly stale and obviously duplicated tabs, but leaves the burden to the user.
+This extension first finds the the list of candidates to be deleted and then lets the user choose what to delete.
 
 ## Install (unpacked)
 
@@ -12,16 +12,14 @@ It asks for one permission, `tabs`, which your browser calls *"Read your browsin
 
 That warning is broader than what the extension does, and the naming is genuinely misleading — [why it is unavoidable](#permissions-why-read-your-browsing-history) is worth reading before you install.
 
-## One button click, one scan
+## Using the extension
 
-Open the popup, click **Clean up my tabs**. The extension reads every tab in every normal window once and produces the two results below. Nothing runs in the background — there is no service worker, and no scan happens unless you click. WYSIWYG
+Open the extension on the top right, popup, click **Clean up my tabs**. The extension reads every tab in every normal browser window using the same profile as you and produces the results below. Nothing runs in the background — there is no service worker, and no scan happens unless you click. WYSIWYG
 
 Excluded from the scan entirely:
 
 - **Incognito tabs** — skipped, and the count of skipped tabs is reported.
 - **Non-normal windows** — devtools, app and popup windows are not tabs a user cleans up.
-
-A tab is counted under one result or the other, never both: new-tab pages take no part in duplicate detection.
 
 ### Result 1 — unused new tabs
 
@@ -68,7 +66,6 @@ Groups open in a full-page, read-only review page.
 
 ## What it does not do
 
-- **It cannot close a tab.** Not new-tab pages, not duplicates. The close function returns `{ closed: 0, wouldClose: [...] }` and logs `[dry-run] would close [...]` to the console. No live close path is written — see [Dry run, and how to graduate](#dry-run-and-how-to-graduate).
 - **No persistence.** No `storage` permission, no history between runs, no service worker holding state. The review page re-runs the scan on load rather than receiving a snapshot.
 - **No network access.** Nothing is sent anywhere — no usage data, no telemetry.
 - **No page access.** No host permissions and no content scripts, so it cannot read or change the contents of any page.

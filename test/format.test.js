@@ -43,6 +43,19 @@ test('planToMarkdown reports what the scan found', () => {
   assert.match(report, /★ keep/);
 });
 
+test('planToMarkdown lists the tabs nothing can be done to', () => {
+  const plan = planCleanup([
+    { id: 1, windowId: 1, index: 0, url: 'https://example.com/only', title: 'Only', groupId: 6 },
+    { id: 2, windowId: 1, index: 1, url: 'chrome://settings/', title: 'Settings', groupId: -1 },
+  ]);
+
+  const report = planToMarkdown(plan);
+
+  assert.match(report, /## Other tabs — 2 not up for deletion/);
+  assert.match(report, /tab 1 · only copy/);
+  assert.match(report, /tab 2 · not scanned for duplicates/);
+});
+
 test('planToMarkdown names the tab group and flags protected copies', () => {
   const plan = planCleanup([
     { id: 1, windowId: 1, index: 0, url: 'https://example.com/g', title: 'G', groupId: 4 },

@@ -278,8 +278,63 @@ test('an empty browser produces an empty plan', () => {
 
   assert.deepEqual(plan.unusedNewTabs, []);
   assert.deepEqual(plan.protectedTabs, []);
+  assert.deepEqual(plan.otherTabs, []);
   assert.deepEqual(plan.duplicateGroups, []);
   assert.deepEqual(plan.totals, { windows: 0, tabs: 0, considered: 0, skippedIncognito: 0 });
+});
+
+test('every considered tab is reported somewhere — the report can show them all', () => {
+  const junk = newTab({ index: 0 });
+  const guarded = newTab({ index: 1, pinned: true });
+  const dupes = [2, 3].map((index) => tab({ url: 'https://example.com/dup', index }));
+  const lone = tab({ url: 'https://example.com/unique', index: 4 });
+  const settings = tab({ url: 'chrome://settings/', index: 5 });
+
+  const plan = planCleanup([junk, guarded, ...dupes, lone, settings]);
+
+  const reported = [
+    ...plan.unusedNewTabs,
+    ...plan.protectedTabs,
+    ...plan.otherTabs,
+    ...plan.duplicateGroups.flatMap((group) => group.tabs),
+  ].map((t) => t.id);
+
+  assert.equal(reported.length, plan.totals.considered, 'no tab reported twice');
+  assert.deepEqual(
+    [...reported].sort((a, b) => a - b),
+    [junk, guarded, ...dupes, lone, settings].map((t) => t.id).sort((a, b) => a - b),
+  );
+});
+
+test('other tabs say why they are not on offer, and are never closable', () => {
+  const lone = tab({ url: 'https://example.com/unique', index: 0 });
+  const settings = tab({ url: 'chrome://settings/', index: 1 });
+
+  const plan = planCleanup([lone, settings, ...[2, 3].map((index) => newTab({ index }))]);
+
+  assert.deepEqual(
+    plan.otherTabs.map((t) => [t.id, t.reason, t.closable]),
+    [
+      [lone.id, 'only copy', false],
+      [settings.id, 'not scanned for duplicates', false],
+    ],
+  );
+});
+
+test('a tab that is the only copy in its tab group is an only copy, not a duplicate', () => {
+  const work = tab({ url: 'https://example.com/doc', groupId: 7, index: 0 });
+  const research = tab({ url: 'https://example.com/doc', groupId: 9, index: 1 });
+
+  const plan = planCleanup([work, research]);
+
+  assert.equal(plan.duplicateGroups.length, 0, 'one copy each — nothing to dedupe');
+  assert.deepEqual(
+    plan.otherTabs.map((t) => [t.id, t.reason]),
+    [
+      [work.id, 'only copy'],
+      [research.id, 'only copy'],
+    ],
+  );
 });
 
 test('an all-junk window keeps its last tab', () => {

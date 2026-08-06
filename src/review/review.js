@@ -14,6 +14,8 @@ const $ = (id) => document.getElementById(id);
 
 const groupsEl = $('groups');
 const newTabsEl = $('new-tabs');
+const otherTabsEl = $('other-tabs');
+const onlyActionable = $('only-actionable');
 const summary = $('summary');
 const status = $('status');
 const outcome = $('outcome');
@@ -81,11 +83,12 @@ function render(plan) {
   }
   summary.textContent = parts.length
     ? `${parts.join(' · ')} across ${plan.totals.windows} window` +
-      `${plan.totals.windows === 1 ? '' : 's'}`
+      `${plan.totals.windows === 1 ? '' : 's'} · ${plan.totals.considered} tabs scanned`
     : `Scanned ${plan.totals.considered} tabs. Nothing to clean up.`;
 
   renderNewTabs(plan);
   renderDuplicates(plan);
+  renderOther(plan);
 
   const hasAnything = plan.unusedNewTabs.length > 0 || plan.duplicateGroups.length > 0;
   $('empty').classList.toggle('hidden', hasAnything);
@@ -117,6 +120,25 @@ function renderNewTabs(plan) {
 function renderDuplicates(plan) {
   groupsEl.replaceChildren(...plan.duplicateGroups.map(renderGroup));
   $('duplicates-section').classList.toggle('hidden', plan.duplicateGroups.length === 0);
+}
+
+/**
+ * Every tab the scan looked at and had nothing to offer for. Hidden behind the
+ * filter, which starts on: the common case is "what can I close", and the full
+ * list is context you ask for.
+ */
+function renderOther(plan) {
+  const others = plan.otherTabs ?? [];
+  const show = !onlyActionable.checked && others.length > 0;
+
+  otherTabsEl.replaceChildren(
+    ...(show
+      ? others.map((tab) =>
+          renderRow(tab, { label: tab.title || prettyUrl(tab.url), note: tab.reason }),
+        )
+      : []),
+  );
+  $('other-section').classList.toggle('hidden', !show);
 }
 
 function renderGroup(group) {
@@ -166,7 +188,7 @@ function renderGroup(group) {
   return section;
 }
 
-function renderRow(tab, { label = null, protections = [] } = {}) {
+function renderRow(tab, { label = null, protections = [], note = null } = {}) {
   const row = document.createElement('label');
   row.className = 'tab-row';
   row.dataset.tabId = String(tab.id);
@@ -197,10 +219,13 @@ function renderRow(tab, { label = null, protections = [] } = {}) {
 
   const notes = document.createElement('span');
   notes.className = 'tab-notes';
-  if (blocked) {
+  if (blocked && protections.length > 0) {
     notes.classList.add('warn');
     notes.textContent = `⚠ ${protections.join(', ')}`;
     notes.title = 'Protected — cannot be closed from here. Tune it in src/lib/config.js';
+  } else if (note) {
+    // Not a protection and not a warning — just why this row has no checkbox.
+    notes.textContent = note;
   } else if (tab.closesWindow) {
     notes.classList.add('warn');
     notes.textContent = '⚠ closes its window';
@@ -265,6 +290,12 @@ for (const button of document.querySelectorAll('.select-all')) {
     toggleSelection(ids);
   });
 }
+
+// Purely a view toggle — re-renders the plan already in hand rather than
+// rescanning, so the selection survives showing and hiding the rest.
+onlyActionable.addEventListener('change', () => {
+  if (lastPlan) render(lastPlan);
+});
 
 /* --------------------------------------------------------------- closing */
 
@@ -417,13 +448,19 @@ function rescanHandlers() {
   });
 }
 
+/** Every tab the plan reports, whatever section it lands in. */
+function everyReportedTab(plan) {
+  return [
+    ...plan.unusedNewTabs,
+    ...plan.protectedTabs,
+    ...(plan.otherTabs ?? []),
+    ...plan.duplicateGroups.flatMap((group) => group.tabs),
+  ];
+}
+
 /** Chrome's window ids are arbitrary; show stable 1-based numbers instead. */
 function numberWindows(plan) {
-  const ids = new Set();
-  for (const group of plan.duplicateGroups) {
-    for (const tab of group.tabs) ids.add(tab.windowId);
-  }
-  for (const tab of [...plan.unusedNewTabs, ...plan.protectedTabs]) ids.add(tab.windowId);
+  const ids = new Set(everyReportedTab(plan).map((tab) => tab.windowId));
 
   windowNumbers = new Map([...ids].sort((a, b) => a - b).map((id, i) => [id, i + 1]));
 }

@@ -20,6 +20,8 @@ Open the extension on the top right, popup, click **Clean up my tabs**. The exte
 
 The popup only ever reports. **Review & clean →** opens a full page listing everything it found, and that page is the only place anything closes.
 
+**Only tabs up for deletion**, the checkbox in the page header, is ticked when the page loads and limits the page to what you can act on. Untick it to add an **Other tabs** section listing every remaining tab in the profile with the reason it is not on offer — `only copy` for a page open exactly once, `not scanned for duplicates` for anything outside `http`/`https`. Those rows are context only: greyed, checkbox disabled, and unreachable by **Kill 'Em All** or any other bulk action. Toggling the filter re-renders what is already on screen; it does not rescan and does not disturb your selection.
+
 Excluded from the scan entirely:
 
 - **Incognito tabs** — skipped, and the count of skipped tabs is reported.
@@ -81,7 +83,7 @@ A duplicate is protected — ⚠, greyed, checkbox disabled — when it is **pin
 - **No network access.** Nothing is sent anywhere — no usage data, no telemetry.
 - **No page access.** No host permissions and no content scripts, so it cannot read or change the contents of any page.
 
-The one path by which data leaves is **⧉ Copy report**, which places a markdown report of the scan on your clipboard. You trigger it; it goes nowhere else.
+The one path by which data leaves is **⧉ Copy report**, which places a markdown report of the scan on your clipboard — including the **Other tabs** section, whatever the filter is set to on screen. You trigger it; it goes nowhere else.
 
 ## Permissions: why "Read your browsing history"
 

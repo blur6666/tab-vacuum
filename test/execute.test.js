@@ -50,6 +50,37 @@ function spyCloser() {
 /** A snapshot that returns the tabs exactly as the scan saw them. */
 const unchanged = (tabs) => () => Promise.resolve(tabs);
 
+test('tabs shown only for context can never be closed by any path', async () => {
+  // The review page lists every tab when the filter is off. Those extra rows
+  // are report, not offer — nothing about showing them may make them reachable.
+  const junk = tab({ url: 'chrome://newtab/', index: 0 });
+  const lone = tab({ url: 'https://example.com/unique', index: 1 });
+  const settings = tab({ url: 'chrome://settings/', index: 2 });
+  const tabs = [junk, lone, settings];
+
+  const plan = planCleanup(tabs);
+  assert.deepEqual(plan.otherTabs.map((t) => t.id), [lone.id, settings.id]);
+
+  const offered = closableTabs(plan);
+  assert.equal(offered.has(lone.id), false);
+  assert.equal(offered.has(settings.id), false);
+  assert.deepEqual(bulkSelection(plan), [junk.id]);
+
+  // Even asked for by id directly — a stale or hand-crafted selection.
+  const closer = spyCloser();
+  const result = await closeTabs(plan, [lone.id, settings.id], {
+    closer,
+    snapshot: unchanged(tabs),
+  });
+
+  assert.equal(result.closed, 0);
+  assert.deepEqual(closer.calls, []);
+  assert.deepEqual(
+    result.skipped.map((s) => s.reason),
+    ['not in the scan', 'not in the scan'],
+  );
+});
+
 test('selectClosable keeps ids the scan offered and refuses the rest', () => {
   const junk = tab({ url: 'chrome://newtab/' });
   const plan = planCleanup([junk, tab({ url: 'https://filler.example/' })]);

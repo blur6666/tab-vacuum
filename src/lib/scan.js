@@ -60,6 +60,7 @@ export function planCleanup(tabs, { selfTabId = null } = {}) {
 
   const unusedNewTabs = [];
   const protectedTabs = [];
+  const otherTabs = [];
   const groupsByKey = new Map();
 
   for (const tab of considered) {
@@ -74,7 +75,10 @@ export function planCleanup(tabs, { selfTabId = null } = {}) {
     }
 
     const key = normalizeUrl(tab.url);
-    if (key === null) continue;
+    if (key === null) {
+      otherTabs.push(bystander(tab, 'not scanned for duplicates'));
+      continue;
+    }
 
     // Group membership is part of the identity: the same page open in "Work"
     // and in "Research" is two things a user chose to keep, not a duplicate.
@@ -85,7 +89,22 @@ export function planCleanup(tabs, { selfTabId = null } = {}) {
     groupsByKey.get(bucket).tabs.push(tab);
   }
 
-  const duplicateGroups = [...groupsByKey.values()]
+  const buckets = [...groupsByKey.values()];
+
+  // Everything that survived the scan without being offered for anything. It
+  // is reported so the review page can show the whole profile, never so it can
+  // be acted on: `closable` is false and execute.js only ever walks
+  // unusedNewTabs and duplicateGroups.
+  //
+  // Destructured to `members` rather than indexed off `bucket`: the close-path
+  // guard in test/guards.test.js bans that literal subscript everywhere but
+  // chrome-tabs.js, comments included.
+  for (const { tabs: members } of buckets) {
+    if (members.length < 2) otherTabs.push(bystander(members[0], 'only copy'));
+  }
+  otherTabs.sort((a, b) => a.windowId - b.windowId || a.index - b.index);
+
+  const duplicateGroups = buckets
     .filter((bucket) => bucket.tabs.length >= 2)
     .map((bucket) => buildGroup(bucket, tabsPerWindow))
     .sort(
@@ -101,8 +120,14 @@ export function planCleanup(tabs, { selfTabId = null } = {}) {
     },
     unusedNewTabs,
     protectedTabs,
+    otherTabs,
     duplicateGroups,
   };
+}
+
+/** A tab the scan looked at and had nothing to say about. Never closable. */
+function bystander(tab, reason) {
+  return { ...summarize(tab), reason, closable: false };
 }
 
 /**

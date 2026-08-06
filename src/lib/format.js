@@ -89,6 +89,16 @@ export function planToMarkdown(plan) {
       );
     }
   }
+  lines.push('');
+
+  // Reported for completeness — the review page can list every tab, so the
+  // copyable version says the same thing. Nothing here is ever closable.
+  const others = plan.otherTabs ?? [];
+  lines.push(`## Other tabs — ${others.length} not up for deletion`);
+  if (others.length === 0) lines.push('_none_');
+  for (const tab of others) {
+    lines.push(`- window ${tab.windowId} · tab ${tab.id} · ${tab.reason} · \`${tab.url}\``);
+  }
 
   return lines.join('\n');
 }

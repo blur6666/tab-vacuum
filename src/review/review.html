@@ -11,6 +11,10 @@
       <header class="page-head">
         <h1>Review tabs</h1>
         <div class="actions">
+          <label class="filter" title="Off shows every tab in the profile, including ones nothing can be done to">
+            <input id="only-actionable" type="checkbox" checked />
+            Only tabs up for deletion
+          </label>
           <button id="group-names" class="hidden" type="button" title="Requires the optional tabGroups permission">
             Show group names
           </button>
@@ -41,6 +45,14 @@
           the same page open in two groups keeps one copy in each.
         </p>
         <div id="groups"></div>
+      </section>
+
+      <section id="other-section" class="result-section hidden">
+        <div class="section-head">
+          <h2>Other tabs</h2>
+          <span class="muted small">nothing to do — shown for context only</span>
+        </div>
+        <div id="other-tabs" class="rows"></div>
       </section>
 
       <p id="empty" class="empty hidden">Nothing to clean up.</p>

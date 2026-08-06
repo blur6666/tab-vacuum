@@ -18,6 +18,10 @@ It only reports. Acting happens on the review page, where you can go through the
 
 5. **Two protection sets, because they answer different questions.** `PROTECT` decides whether a new-tab page is a candidate at all. `NEVER_CLOSE` decides whether a duplicate may be closed, and is deliberately shorter — `grouped` is absent because protecting grouped tabs would make per-group dedupe a no-op, and `active` / `soleTabInWindow` are absent by decision, warned about in the UI rather than forbidden. Closing a duplicate that is alone in its window closes that window; the row says so.
 
+6. **The report shows every tab; the filter decides how many you look at.** `planCleanup()` returns `otherTabs` alongside the actionable lists — every considered tab that is neither an unused new tab nor part of a duplicate group, each with a `reason` and `closable: false`. The review page's **Only tabs up for deletion** checkbox is on at load and hides that section. *Why:* seeing the whole profile is how you confirm the scan did not miss something, but the default view has to stay the short one — a page listing 300 rows is a page nobody reads before clicking.
+
+7. **`otherTabs` is report, never offer.** `closableTabs()` and `bulkSelection()` in `execute.js` walk only `unusedNewTabs` and `duplicateGroups`, so nothing in `otherTabs` can be ticked, bulk-selected, or closed by id. *Why:* widening what is *displayed* must never widen what is *reachable*. `test/execute.test.js` asserts this directly.
+
 We still do not inspect the "back stack" — the history a tab would return to on Back. There may be something important there.
 
 ## Writing style for `.md` files

@@ -21,7 +21,24 @@ main {
 
 .actions {
   display: flex;
+  align-items: center;
   gap: 8px;
+}
+
+/* Reads as a control, not as a row of text: it changes what the page shows. */
+.filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.filter input {
+  margin: 0;
+  cursor: pointer;
 }
 
 #summary,

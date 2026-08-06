@@ -20,6 +20,8 @@ Open the extension on the top right, popup, click **Clean up my tabs**. The exte
 
 The popup only ever reports. **Review & clean →** opens a full page listing everything it found, and that page is the only place anything closes.
 
+Every row on the review page shows which tab group it belongs to — `g1`, `g2`, … numbered stably across the whole report, or `—` for an ungrouped tab. Grant the optional `tabGroups` permission and the column reads `g1 · Work` in the group's own colour instead. The browser's own group id is in the tooltip, which is what the copied report lists.
+
 **Only tabs up for deletion**, the checkbox in the page header, is ticked when the page loads and limits the page to what you can act on. Untick it to add an **Other tabs** section listing every remaining tab in the profile with the reason it is not on offer — `only copy` for a page open exactly once, `not scanned for duplicates` for anything outside `http`/`https`. Those rows are context only: greyed, checkbox disabled, and unreachable by **Kill 'Em All** or any other bulk action. Toggling the filter re-renders what is already on screen; it does not rescan and does not disturb your selection.
 
 Excluded from the scan entirely:

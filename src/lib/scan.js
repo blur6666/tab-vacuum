@@ -183,6 +183,9 @@ function summarize(tab) {
     id: tab.id,
     windowId: tab.windowId,
     index: tab.index,
+    // Carried on every reported tab, not just on duplicate buckets: the review
+    // page shows a group column per row. -1 means ungrouped.
+    groupId: tabGroupId(tab),
     url: tab.url ?? '',
     title: tab.title ?? '',
     lastAccessed: typeof tab.lastAccessed === 'number' ? tab.lastAccessed : null,

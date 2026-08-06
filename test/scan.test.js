@@ -337,6 +337,28 @@ test('a tab that is the only copy in its tab group is an only copy, not a duplic
   );
 });
 
+test('every reported tab carries its group id, ungrouped as -1', () => {
+  const grouped = newTab({ groupId: 7, index: 0 });
+  const dupes = [1, 2].map((index) => tab({ url: 'https://example.com/d', groupId: 4, index }));
+  const lone = tab({ url: 'https://example.com/lone', index: 3 });
+
+  const plan = planCleanup([grouped, ...dupes, lone]);
+
+  // grouped is a new tab in a group, so PROTECT.grouped puts it under protected.
+  assert.equal(plan.protectedTabs[0].groupId, 7);
+  for (const t of plan.duplicateGroups[0].tabs) assert.equal(t.groupId, 4);
+  assert.equal(plan.otherTabs.find((t) => t.id === lone.id).groupId, -1);
+});
+
+test('a tab reported with no groupId field at all reads as ungrouped', () => {
+  const plan = planCleanup([
+    { id: 1, windowId: 1, index: 0, url: 'https://example.com/a', title: 'A' },
+    { id: 2, windowId: 1, index: 1, url: 'https://example.com/b', title: 'B' },
+  ]);
+
+  assert.deepEqual(plan.otherTabs.map((t) => t.groupId), [-1, -1]);
+});
+
 test('an all-junk window keeps its last tab', () => {
   const junk = [0, 1, 2].map((index) => newTab({ index }));
   const plan = planCleanup(junk);

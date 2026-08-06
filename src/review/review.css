@@ -132,8 +132,9 @@ main {
 }
 
 .tab-row {
+  /* tick · ★ · title · notes · group · window · last used */
   display: grid;
-  grid-template-columns: auto 16px 1fr auto auto auto;
+  grid-template-columns: auto 16px 1fr auto auto auto auto;
   gap: 10px;
   align-items: baseline;
   padding: 8px 12px;
@@ -179,6 +180,14 @@ main {
 
 .tab-notes.warn {
   color: light-dark(#8a5a00, #f0c33c);
+}
+
+/* Tabular so the group column lines up down the list. */
+.tab-group {
+  font-variant-numeric: tabular-nums;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tab-notes:empty {

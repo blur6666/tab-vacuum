@@ -62,14 +62,18 @@ export function planToMarkdown(plan) {
   lines.push(`## Unused new tabs — ${plan.unusedNewTabs.length} offered`);
   if (plan.unusedNewTabs.length === 0) lines.push('_none_');
   for (const tab of plan.unusedNewTabs) {
-    lines.push(`- window ${tab.windowId} · tab ${tab.id} · \`${tab.url || '(blank)'}\``);
+    lines.push(
+      `- window ${tab.windowId} · tab ${tab.id}${describeGroup(tab.groupId)} · \`${tab.url || '(blank)'}\``,
+    );
   }
   lines.push('');
 
   lines.push(`## Protected new tabs — ${plan.protectedTabs.length} kept`);
   if (plan.protectedTabs.length === 0) lines.push('_none_');
   for (const tab of plan.protectedTabs) {
-    lines.push(`- window ${tab.windowId} · tab ${tab.id} · ${tab.reasons.join(', ')}`);
+    lines.push(
+      `- window ${tab.windowId} · tab ${tab.id}${describeGroup(tab.groupId)} · ${tab.reasons.join(', ')}`,
+    );
   }
   lines.push('');
 
@@ -97,7 +101,9 @@ export function planToMarkdown(plan) {
   lines.push(`## Other tabs — ${others.length} not up for deletion`);
   if (others.length === 0) lines.push('_none_');
   for (const tab of others) {
-    lines.push(`- window ${tab.windowId} · tab ${tab.id} · ${tab.reason} · \`${tab.url}\``);
+    lines.push(
+      `- window ${tab.windowId} · tab ${tab.id}${describeGroup(tab.groupId)} · ${tab.reason} · \`${tab.url}\``,
+    );
   }
 
   return lines.join('\n');

@@ -95,7 +95,7 @@ function render(plan) {
   actionBar.classList.toggle('hidden', !hasAnything);
 
   // Only worth offering when there is actually a group to name.
-  const hasGrouped = plan.duplicateGroups.some((g) => g.groupId !== TAB_GROUP_ID_NONE);
+  const hasGrouped = everyReportedTab(plan).some((tab) => tab.groupId !== TAB_GROUP_ID_NONE);
   hasTabGroupsPermission()
     .then((granted) => {
       groupNamesButton.classList.toggle('hidden', granted || !hasGrouped);
@@ -156,13 +156,12 @@ function renderGroup(group) {
   meta.className = 'group-meta';
 
   const where = groupLabel(group.groupId);
-  if (where) {
-    const chip = document.createElement('span');
-    chip.className = 'group-chip';
-    chip.textContent = where.text;
-    if (where.color) chip.style.setProperty('--chip', where.color);
-    meta.append(chip);
-  }
+  const chip = document.createElement('span');
+  chip.className = 'group-chip';
+  chip.textContent = where.text;
+  chip.title = where.title;
+  if (where.color) chip.style.setProperty('--chip', where.color);
+  meta.append(chip);
 
   const selectAll = document.createElement('button');
   selectAll.type = 'button';
@@ -232,6 +231,8 @@ function renderRow(tab, { label = null, protections = [], note = null } = {}) {
     notes.title = 'The only tab in its window — closing it closes the window too.';
   }
 
+  const group = tabGroupCell(tab.groupId);
+
   const where = document.createElement('span');
   where.className = 'tab-meta';
   where.textContent = `window ${windowNumbers.get(tab.windowId) ?? '?'}`;
@@ -240,8 +241,26 @@ function renderRow(tab, { label = null, protections = [], note = null } = {}) {
   when.className = 'tab-meta';
   when.textContent = relativeTime(tab.lastAccessed);
 
-  row.append(box, badge, title, notes, where, when);
+  row.append(box, badge, title, notes, group, where, when);
   return row;
+}
+
+/**
+ * The per-tab group column. Same label as the group heading, except that
+ * "ungrouped" would be noise repeated down a whole column — a dash says it.
+ */
+function tabGroupCell(groupId) {
+  const cell = document.createElement('span');
+  cell.className = 'tab-meta tab-group';
+
+  const label = groupLabel(groupId);
+  const ungrouped = groupId === undefined || groupId === TAB_GROUP_ID_NONE;
+
+  cell.textContent = ungrouped ? '—' : label.text;
+  cell.title = label.title;
+  if (label.color) cell.style.color = label.color;
+
+  return cell;
 }
 
 /* ------------------------------------------------------------- selection */
@@ -395,13 +414,30 @@ function reportOutcome(result) {
 
 /* ----------------------------------------------------------- group names */
 
+/**
+ * How a tab group is written wherever it appears: `g3`, or `g3 · Work` in the
+ * group's own colour once the optional `tabGroups` permission is granted.
+ *
+ * The number is ours and stable across the report; the browser's own group id
+ * is arbitrary, so it lives in the tooltip — that is the value the copied
+ * markdown report prints, which is the only reason to want it.
+ */
 function groupLabel(groupId) {
-  if (groupId === TAB_GROUP_ID_NONE) return { text: 'ungrouped', color: null };
+  if (groupId === undefined || groupId === TAB_GROUP_ID_NONE) {
+    return { text: 'ungrouped', color: null, title: 'not in a tab group' };
+  }
 
+  const number = groupNumbers.get(groupId) ?? '?';
   const group = tabGroups.get(groupId);
-  if (group?.title) return { text: group.title, color: GROUP_COLORS[group.color] ?? null };
 
-  return { text: `group ${groupNumbers.get(groupId) ?? '?'}`, color: null };
+  return {
+    text: group?.title ? `g${number} · ${group.title}` : `g${number}`,
+    color: GROUP_COLORS[group?.color] ?? null,
+    title:
+      `tab group ${groupId}` +
+      (group?.title ? ` — "${group.title}"` : '') +
+      (group?.color ? ` (${group.color})` : ''),
+  };
 }
 
 /** Chrome reports group colours by name, not by value. */
@@ -465,10 +501,16 @@ function numberWindows(plan) {
   windowNumbers = new Map([...ids].sort((a, b) => a - b).map((id, i) => [id, i + 1]));
 }
 
-/** Same trick for group ids, used whenever `tabGroups` has not been granted. */
+/**
+ * Same trick for group ids. Numbered across every reported tab, not just the
+ * duplicate buckets, so g1 means the same group in every section — including
+ * the ones only visible with the filter off.
+ */
 function numberGroups(plan) {
   const ids = new Set(
-    plan.duplicateGroups.map((g) => g.groupId).filter((id) => id !== TAB_GROUP_ID_NONE),
+    everyReportedTab(plan)
+      .map((tab) => tab.groupId)
+      .filter((id) => id !== undefined && id !== TAB_GROUP_ID_NONE),
   );
 
   groupNumbers = new Map([...ids].sort((a, b) => a - b).map((id, i) => [id, i + 1]));

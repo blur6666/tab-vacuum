@@ -1,13 +1,25 @@
 {
   "manifest_version": 3,
-  "name": "Tab Cleanup",
+  "name": "Tab Vacuum",
   "version": "0.1.0",
-  "description": "Find unused new-tab pages and duplicate tabs across all your windows.",
+  "description": "Find unused new-tab pages and duplicate tabs across all your windows and saved groups.",
   "minimum_chrome_version": "116",
   "permissions": ["tabs"],
   "optional_permissions": ["tabGroups"],
+  "icons": {
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
   "action": {
     "default_popup": "src/popup/popup.html",
-    "default_title": "Tab Cleanup"
+    "default_title": "Tab Vacuum",
+    "default_icon": {
+      "16": "icon16.png",
+      "32": "icon32.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
   }
 }

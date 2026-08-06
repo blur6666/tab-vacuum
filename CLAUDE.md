@@ -26,6 +26,14 @@ It only reports. Acting happens on the review page, where you can go through the
 
 We still do not inspect the "back stack" — the history a tab would return to on Back. There may be something important there.
 
+## Committing — mandatory
+
+**Every task ends with a commit. One commit per task, always.** Finishing a task means the work is committed, not merely written to disk — an uncommitted change is not a finished task. Do not batch several tasks into one commit, and do not leave a finished task sitting in the working tree waiting for the next one.
+
+When a run covers several tasks, that is several commits, each holding one task's code, tests and docs together and each passing `npm test` on its own. Push when the run is done.
+
+*Why:* one task per commit is what makes a change reviewable, revertable and bisectable. A commit spanning three tasks cannot be undone without taking the other two with it, and the reason for any given line is lost in the mixture.
+
 ## Writing style for `.md` files
 
 **Do not hard-wrap Markdown at 80 characters.** A paragraph is one line, however long it runs — no manual line breaks inside it. Break lines only where the document genuinely breaks: between paragraphs, list items, table rows and headings. *Why:* re-wrapped paragraphs turn a one-word edit into a diff across every line of the paragraph, and editors soft-wrap for reading anyway. This applies to CLAUDE.md, README.md, BACKLOG.md and any other Markdown in the repo. Source code keeps its own line length; this rule is about prose only.

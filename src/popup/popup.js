@@ -8,6 +8,7 @@ import { queryAllTabs, openReviewPage } from '../lib/chrome-tabs.js';
 import { requestTabsPermission } from '../lib/permissions.js';
 import { planCleanup, MissingTabsPermissionError } from '../lib/scan.js';
 import { planToMarkdown, prettyUrl } from '../lib/format.js';
+import { DEBUG_LOG_SCANNED_TABS } from '../lib/config.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -57,7 +58,9 @@ scanButton.addEventListener('click', () => {
 
 async function scan() {
   const tabs = await queryAllTabs();
-  console.log(`Tab Cleanup: scanned ${tabs.length} tabs`, JSON.parse(JSON.stringify(tabs)));
+  if (DEBUG_LOG_SCANNED_TABS) {
+    console.log(`Tab Cleanup: scanned ${tabs.length} tabs`, JSON.parse(JSON.stringify(tabs)));
+  }
   const plan = planCleanup(tabs);
   lastPlan = plan;
 

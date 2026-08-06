@@ -97,6 +97,13 @@ export const DEDUPE_WITHIN_TAB_GROUPS = true;
 /** How long the armed "click again to close" button waits before reverting. */
 export const CONFIRM_REVERT_MS = 3000;
 
+/**
+ * Prints every raw chrome.tabs.query() field to the popup's console on each
+ * scan — handy for checking what a real tab looks like. Off by default: a
+ * store build should be silent.
+ */
+export const DEBUG_LOG_SCANNED_TABS = false;
+
 /** Incognito tabs are only visible at all if the extension is enabled in incognito. */
 export const INCLUDE_INCOGNITO = false;
 

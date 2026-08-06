@@ -18,7 +18,7 @@ const $ = (id) => document.getElementById(id);
  * when it loses focus, so this resets to SCAN on its own with no state to keep.
  */
 const SCAN = 'Scan my tabs';
-const SCAN_AGAIN = 'Scan again';
+const SCAN_AGAIN = '⟳ Scan again';
 
 const scanButton = $('scan');
 const scanSlot = $('scan-slot');
@@ -168,5 +168,5 @@ function describePerWindow(tabs) {
     perWindow.set(tab.windowId, (perWindow.get(tab.windowId) ?? 0) + 1);
   }
   // Numbered for display only — Chrome's window ids are not meaningful to users.
-  return [...perWindow.values()].map((count, i) => `win ${i + 1} · ${count}`).join('   ');
+  return [...perWindow.values()].map((count, i) => `win ${i + 1} · ${count}`).join('\n');
 }

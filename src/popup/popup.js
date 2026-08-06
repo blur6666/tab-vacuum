@@ -57,6 +57,7 @@ scanButton.addEventListener('click', () => {
 
 async function scan() {
   const tabs = await queryAllTabs();
+  console.log(`Tab Cleanup: scanned ${tabs.length} tabs`, JSON.parse(JSON.stringify(tabs)));
   const plan = planCleanup(tabs);
   lastPlan = plan;
 

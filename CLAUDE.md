@@ -20,6 +20,10 @@ It only reports. Acting happens on the review page, where you can go through the
 
 We still do not inspect the "back stack" — the history a tab would return to on Back. There may be something important there.
 
+## Writing style for `.md` files
+
+**Do not hard-wrap Markdown at 80 characters.** A paragraph is one line, however long it runs — no manual line breaks inside it. Break lines only where the document genuinely breaks: between paragraphs, list items, table rows and headings. *Why:* re-wrapped paragraphs turn a one-word edit into a diff across every line of the paragraph, and editors soft-wrap for reading anyway. This applies to CLAUDE.md, README.md, BACKLOG.md and any other Markdown in the repo. Source code keeps its own line length; this rule is about prose only.
+
 ## Architecture constraints
 
 - `src/lib/url.js` and `src/lib/scan.js` never touch the `chrome` global — pure functions, so `node --test` imports them with no browser and no mock.

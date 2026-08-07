@@ -14,6 +14,10 @@ One further permission, `tabGroups`, is *optional* and never requested unless yo
 
 That warning is broader than what the extension does, and the naming is genuinely misleading — [why it is unavoidable](#permissions-why-read-your-browsing-history) is worth reading before you install.
 
+## Packaging for the Chrome Web Store
+
+`npm run package` writes `tab-vacuum-<version>.zip` at the repo root, containing only `manifest.json`, the icons, and `src/` — no `test/`, no `.md` files, no `package.json`, no `tmp/`, no dotfiles. It stages those files in `tmp/package` (deleted afterward) and zips with PowerShell's `Compress-Archive`, since neither `zip` nor `tar` ships with Git Bash on Windows and this repo takes on no npm dependencies to get one. `*.zip` is gitignored, so the output never gets committed.
+
 ## Using the extension
 
 Open the extension on the top right, popup, click **Scan my tabs**. The extension reads every tab in every normal browser window using the same profile as you and produces the results below. Nothing runs in the background — there is no service worker, and no scan happens unless you click. WYSIWYG

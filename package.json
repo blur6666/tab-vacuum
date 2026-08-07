@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Brave extension that finds unused new-tab pages and duplicated tabs, helping you remove.",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "package": "bash scripts/package.sh"
   }
 }

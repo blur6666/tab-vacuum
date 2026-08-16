@@ -28,8 +28,10 @@ h1 {
 }
 
 #ext-icon {
+  width: 19.2px;
+  height: 19.2px;
   border-radius: 6px;
-  filter: drop-shadow(0 0 6px color-mix(in srgb, #ffffff 55%, transparent));
+  filter: drop-shadow(0 0 2px color-mix(in srgb, #ffffff 55%, transparent));
 }
 
 

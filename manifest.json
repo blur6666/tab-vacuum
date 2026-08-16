@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Tab Vacuum",
   "version": "0.1.0",
-  "description": "Find unused new-tab pages and duplicate tabs across all your windows and saved groups.",
+  "description": "Find unused new-tab pages and duplicate tabs across all your windows and clean them.",
   "minimum_chrome_version": "116",
   "permissions": ["tabs"],
   "optional_permissions": ["tabGroups"],

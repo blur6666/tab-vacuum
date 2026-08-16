@@ -29,13 +29,16 @@ import { closeBlockers } from './scan.js';
 export function closableTabs(plan) {
   const closable = new Map();
 
-  for (const tab of plan.unusedNewTabs) {
+  for (const tab of plan.unusedNewTabs ?? []) {
     if (tab.closable) closable.set(tab.id, tab);
   }
   for (const tab of plan.systemTabs ?? []) {
     if (tab.closable) closable.set(tab.id, tab);
   }
-  for (const group of plan.duplicateGroups) {
+  for (const tab of plan.junkTabs ?? []) {
+    if (tab.closable) closable.set(tab.id, tab);
+  }
+  for (const group of plan.duplicateGroups ?? []) {
     for (const tab of group.tabs) {
       if (tab.closable) closable.set(tab.id, tab);
     }
@@ -57,10 +60,13 @@ export function closableTabs(plan) {
 export function bulkSelection(plan) {
   const ids = [];
 
-  for (const tab of plan.unusedNewTabs) {
+  for (const tab of plan.unusedNewTabs ?? []) {
     if (tab.closable) ids.push(tab.id);
   }
-  for (const group of plan.duplicateGroups) {
+  for (const tab of plan.junkTabs ?? []) {
+    if (tab.closable) ids.push(tab.id);
+  }
+  for (const group of plan.duplicateGroups ?? []) {
     for (const tab of group.tabs) {
       if (tab.closable && !tab.isKeeper) ids.push(tab.id);
     }
@@ -93,13 +99,16 @@ export function selectClosable(plan, ids) {
 }
 
 function protectionFor(plan, id) {
-  const protectedTab = plan.protectedTabs.find((tab) => tab.id === id);
+  const protectedTab = (plan.protectedTabs ?? []).find((tab) => tab.id === id);
   if (protectedTab) return protectedTab.reasons.join(', ');
 
   const protectedSystemTab = (plan.protectedSystemTabs ?? []).find((tab) => tab.id === id);
   if (protectedSystemTab) return protectedSystemTab.reasons.join(', ');
 
-  for (const group of plan.duplicateGroups) {
+  const protectedJunkTab = (plan.protectedJunkTabs ?? []).find((tab) => tab.id === id);
+  if (protectedJunkTab) return protectedJunkTab.reasons.join(', ');
+
+  for (const group of plan.duplicateGroups ?? []) {
     const tab = group.tabs.find((candidate) => candidate.id === id);
     if (tab) return tab.protections.join(', ') || 'not closable';
   }
@@ -154,9 +163,10 @@ function staleReason(tab, plannedUrl, id, selfTabId) {
 function urlsById(plan) {
   const urls = new Map();
 
-  for (const tab of plan.unusedNewTabs) urls.set(tab.id, tab.url);
+  for (const tab of plan.unusedNewTabs ?? []) urls.set(tab.id, tab.url);
   for (const tab of plan.systemTabs ?? []) urls.set(tab.id, tab.url);
-  for (const group of plan.duplicateGroups) {
+  for (const tab of plan.junkTabs ?? []) urls.set(tab.id, tab.url);
+  for (const group of plan.duplicateGroups ?? []) {
     for (const tab of group.tabs) urls.set(tab.id, tab.url);
   }
 

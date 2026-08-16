@@ -1,5 +1,5 @@
 body {
-  width: 340px;
+  width: 350px;
 }
 
 main {
@@ -13,25 +13,21 @@ main {
 header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
-}
-
-#scan {
-  padding: 6px 10px;
 }
 
 #scan-slot {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-button.primary {
-  width: 50%;
-}
-
-header #scan.secondary {
-  width: 50%;
+#scan-slot button {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  white-space: nowrap;
 }
 
 .status {

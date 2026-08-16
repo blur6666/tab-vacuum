@@ -7,5 +7,3 @@
 - [DONE] Change label from the first button to "Scan my tabs". Then  after it has already scanned one time (but didnt move to the report yet) the label should be "Scan again". See images in the tmp/ folder. Delete the folder after this task is done. — `tmp/` kept by decision on 2026-08-06; it is gitignored, so it never reaches the repo.
 
 - [DONE] Lets remove the closing protection for new-tabs that are "active" it makes no sense.
-
-- [TECH VIABLE?] Can we read the data of when was the tab  opened and when was it last accessed? Im thinking in some way to kill forgotten or "hoarded" tabs

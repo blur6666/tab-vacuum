@@ -1,29 +1,28 @@
 /**
- * The popup only ever reports. Everything that closes a tab lives on the
- * review page, behind a visible selection and a two-click confirm — scanning
- * must never be one click away from deleting something.
+ * Tab Cleanup popup.
+ *
+ * Provides:
+ * 1. "Scan my tabs" / "Scan again" -> Scans and shows breakdown, with link to Review page.
+ * 2. "Vacuum 'em all!" -> One-click scan & delete for broader junk + duplicate tabs
+ *    with a two-click confirmation.
  */
 
 import { queryAllTabs, openReviewPage } from '../lib/chrome-tabs.js';
 import { requestTabsPermission } from '../lib/permissions.js';
 import { planCleanup, MissingTabsPermissionError } from '../lib/scan.js';
+import { planVacuum } from '../lib/vacuum.js';
+import { closeTabs } from '../lib/execute.js';
 import { planToMarkdown, prettyUrl } from '../lib/format.js';
-import { DEBUG_LOG_SCANNED_TABS } from '../lib/config.js';
+import { DEBUG_LOG_SCANNED_TABS, CONFIRM_REVERT_MS } from '../lib/config.js';
 
 const $ = (id) => document.getElementById(id);
 
-/**
- * The button says what it does, and says it again honestly on the second press.
- * Once results are on screen, pressing it re-scans — it does not open the
- * review page, so "Scan again" is what it actually is. The popup is discarded
- * when it loses focus, so this resets to SCAN on its own with no state to keep.
- */
 const SCAN = 'Scan my tabs';
 const SCAN_AGAIN = '⟳ Scan again';
+const VACUUM = "Vacuum 'em all!";
 
 const scanButton = $('scan');
-const scanSlot = $('scan-slot');
-const popupHeader = document.querySelector('main > header');
+const vacuumButton = $('vacuum');
 const status = $('status');
 const results = $('results');
 const toggleProtected = $('toggle-protected');
@@ -32,20 +31,18 @@ const openReview = $('open-review');
 const copyButton = $('copy');
 
 let lastPlan = null;
+let vacuumPlan = null;
+let armedVacuumTimer = null;
 
-// popup.html carries the same label so the button reads correctly before this
-// module runs; setting it here keeps the constants above the single source.
 scanButton.textContent = SCAN;
-positionScanButton();
+vacuumButton.textContent = VACUUM;
 
 scanButton.addEventListener('click', () => {
-  // `tabs` is a required permission, so this resolves true immediately and
-  // never prompts. The check stays because the permission can still be revoked
-  // from the browser's Details page, and a revoked permission must produce the
-  // explanatory message rather than a silently empty plan.
+  disarmVacuum();
   const granted = requestTabsPermission();
 
   scanButton.disabled = true;
+  vacuumButton.disabled = true;
   setStatus('Scanning…');
 
   granted
@@ -53,8 +50,103 @@ scanButton.addEventListener('click', () => {
     .catch(showError)
     .finally(() => {
       scanButton.disabled = false;
+      vacuumButton.disabled = false;
     });
 });
+
+vacuumButton.addEventListener('click', async () => {
+  if (vacuumButton.classList.contains('armed')) {
+    await executeVacuum();
+    return;
+  }
+
+  const granted = await requestTabsPermission();
+  if (!granted) {
+    denied();
+    return;
+  }
+
+  scanButton.disabled = true;
+  vacuumButton.disabled = true;
+  setStatus('Scanning for duplicates & junk…');
+
+  try {
+    const tabs = await queryAllTabs();
+    if (DEBUG_LOG_SCANNED_TABS) {
+      console.log(`Vacuum scan: ${tabs.length} tabs`, tabs);
+    }
+    const result = planVacuum(tabs);
+    vacuumPlan = result;
+
+    if (result.totalClosable === 0) {
+      setStatus('Nothing to vacuum — no duplicate or junk tabs found.');
+      disarmVacuum();
+      return;
+    }
+
+    armVacuum(result.totalClosable);
+    setStatus(
+      `Found ${result.totalClosable} tab${result.totalClosable === 1 ? '' : 's'} to vacuum ` +
+        `(${result.junkTabs.length} junk, ${result.totalClosable - result.junkTabs.length} duplicate${result.totalClosable - result.junkTabs.length === 1 ? '' : 's'}).`,
+    );
+  } catch (error) {
+    showError(error);
+    disarmVacuum();
+  } finally {
+    scanButton.disabled = false;
+    vacuumButton.disabled = false;
+  }
+});
+
+function armVacuum(count) {
+  disarmVacuum();
+  vacuumButton.textContent = `Closing ${count} tab${count === 1 ? '' : 's'}, ok?`;
+  vacuumButton.classList.add('armed');
+  armedVacuumTimer = setTimeout(() => {
+    disarmVacuum();
+  }, CONFIRM_REVERT_MS);
+}
+
+function disarmVacuum() {
+  if (armedVacuumTimer) {
+    clearTimeout(armedVacuumTimer);
+    armedVacuumTimer = null;
+  }
+  vacuumButton.textContent = VACUUM;
+  vacuumButton.classList.remove('armed');
+  vacuumPlan = null;
+}
+
+async function executeVacuum() {
+  if (!vacuumPlan) return;
+  const currentVacuum = vacuumPlan;
+  disarmVacuum();
+
+  scanButton.disabled = true;
+  vacuumButton.disabled = true;
+  setStatus('Closing tabs…');
+
+  try {
+    const result = await closeTabs(currentVacuum.plan, currentVacuum.closableIds);
+    if (result.closed > 0) {
+      setStatus(
+        `Closed ${result.closed} tab${result.closed === 1 ? '' : 's'}. ` +
+          `Ctrl+Shift+T reopens them if needed.`,
+      );
+    } else {
+      setStatus('Nothing was closed.');
+    }
+
+    if (!results.classList.contains('hidden')) {
+      await scan();
+    }
+  } catch (error) {
+    showError(error);
+  } finally {
+    scanButton.disabled = false;
+    vacuumButton.disabled = false;
+  }
+}
 
 async function scan() {
   const tabs = await queryAllTabs();
@@ -73,7 +165,6 @@ function render(plan) {
 
   scanButton.textContent = SCAN_AGAIN;
   scanButton.className = 'secondary';
-  positionScanButton();
 
   $('totals').textContent =
     `Scanned ${plan.totals.considered} tabs · ${plan.totals.windows} window` +
@@ -100,8 +191,6 @@ function render(plan) {
       ` · ${duplicateTabs} tabs`
     : 'No duplicate tabs found.';
 
-  // The review page is the only place anything closes, so offer it whenever
-  // there is something to act on — not just when there are duplicates.
   const hasAnything =
     plan.unusedNewTabs.length > 0 || systemTabs.length > 0 || plan.duplicateGroups.length > 0;
   openReview.classList.toggle('hidden', !hasAnything);
@@ -163,14 +252,6 @@ function showError(error) {
 
 function setStatus(text) {
   status.textContent = text;
-}
-
-function positionScanButton() {
-  if (scanButton.classList.contains('secondary')) {
-    popupHeader.append(scanButton);
-    return;
-  }
-  scanSlot.append(scanButton);
 }
 
 function describePerWindow(tabs) {

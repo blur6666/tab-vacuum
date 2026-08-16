@@ -191,11 +191,11 @@ export function closeBlockers(tab) {
 }
 
 /** Chrome omits groupId entirely on older builds; absent means ungrouped. */
-function tabGroupId(tab) {
+export function tabGroupId(tab) {
   return tab.groupId ?? TAB_GROUP_ID_NONE;
 }
 
-function summarize(tab) {
+export function summarize(tab) {
   return {
     id: tab.id,
     windowId: tab.windowId,
@@ -209,7 +209,7 @@ function summarize(tab) {
   };
 }
 
-function buildGroup({ key, groupId, tabs: group }, tabsPerWindow) {
+export function buildGroup({ key, groupId, tabs: group }, tabsPerWindow) {
   const keeper = pickKeeper(group);
   const tabs = [...group]
     .sort(

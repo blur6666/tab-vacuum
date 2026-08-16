@@ -160,6 +160,8 @@ Two things automation cannot judge:
 
 `npm test` — `node --test`, no dependencies. 62 tests: URL heuristics, every protection rule, keeper selection, per-group deduplication, the permission interlock, the guarantee that context-only rows stay unreachable, and the close path with injected fakes so no browser is needed.
 
+Every push and every pull request runs that suite on GitHub Actions (`.github/workflows/test.yml`), on Node 20.12 and 22 — 20.12 being the floor, since `test/guards.test.js` needs `Dirent.parentPath` and `import.meta.dirname`. There is no install step and no cache, because there is nothing to install. Until that workflow existed the guard tests were a guarantee only when somebody remembered to run them.
+
 Browser testing is **partly** automatable: Brave and Edge still honour `--load-extension`, so Playwright can load the extension and drive its pages (CLAUDE.md explains why Chrome-branded builds cannot). Install Playwright **outside this repo** so the project stays dependency-free:
 
 ```js

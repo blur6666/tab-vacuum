@@ -45,8 +45,13 @@ export function isNewTabUrl(url) {
 
 /**
  * Is this a browser-internal page (Settings, Downloads, Extensions, ...)
- * rather than real content? Checked by scheme only — never called on a
- * new-tab URL, since isNewTabUrl runs first and both can share `chrome:`.
+ * rather than real content? Checked by scheme only, so it says yes to
+ * `chrome://newtab/` too — both share `chrome:`.
+ *
+ * Callers must therefore claim new-tab URLs first. scan.js does, with an
+ * explicit isNewTabUrl() guard; relying on isNewTabish() alone is not enough,
+ * because it rejects a tab mid-navigation to real content and that rejection
+ * used to fall through to here.
  */
 export function isSystemPageUrl(url) {
   if (typeof url !== 'string' || url === '') return false;

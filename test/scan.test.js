@@ -110,6 +110,18 @@ test('a tab navigating away from the new tab page is never a candidate', () => {
 
   assert.equal(plan.unusedNewTabs.length, 0);
   assert.equal(plan.protectedTabs.length, 0, 'it is not a new tab at all, so not "protected"');
+
+  // It must not reappear as a system tab either. `chrome://newtab/` matches
+  // SYSTEM_URL_SCHEMES on scheme alone, so before scan.js claimed new-tab URLs
+  // up front, the tab this test rejects was offered — and closable — one
+  // section down. Asserting only "not a new tab" is what let that through.
+  assert.deepEqual(plan.systemTabs, [], 'not offered as a system tab');
+  assert.deepEqual(plan.protectedSystemTabs, [], 'not a system tab at all');
+
+  const bystander = plan.otherTabs.find((tab) => tab.id === arriving.id);
+  assert.ok(bystander, 'it is reported, not dropped');
+  assert.equal(bystander.reason, 'navigating to new content');
+  assert.equal(bystander.closable, false, 'and it can never be closed');
 });
 
 test('a tab navigating towards a new tab page still counts', () => {

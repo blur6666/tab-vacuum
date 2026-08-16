@@ -36,6 +36,24 @@ test('detectNewTabOrExtension identifies blank/new tabs, extensions, and interna
   assert.equal(detectNewTabOrExtension({ url: 'view-source:https://example.com' }), JUNK_TYPES.INTERNAL);
 
   assert.equal(detectNewTabOrExtension({ url: 'https://example.com', title: 'Example' }), null);
+
+  // Reuses the same predicates as scan.js (isNewTabUrl / isSystemPageUrl), so
+  // it must not be narrower than the plain "Scan my tabs" detection.
+  assert.equal(detectNewTabOrExtension({ url: 'vivaldi://newtab/' }), JUNK_TYPES.NEW_TAB);
+  assert.equal(detectNewTabOrExtension({ url: 'opera://startpage/' }), JUNK_TYPES.NEW_TAB);
+  assert.equal(detectNewTabOrExtension({ url: 'chrome://new-tab-page/' }), JUNK_TYPES.NEW_TAB);
+  assert.equal(detectNewTabOrExtension({ url: '' }), JUNK_TYPES.NEW_TAB);
+  assert.equal(detectNewTabOrExtension({ url: 'vivaldi://settings/' }), JUNK_TYPES.INTERNAL);
+  assert.equal(detectNewTabOrExtension({ url: 'opera://settings/' }), JUNK_TYPES.INTERNAL);
+
+  // A tab mid-navigation away from the new-tab page is real content arriving,
+  // not new_tab — same rule as scan.js's isNewTabish. It still falls through
+  // to 'internal', because isSystemPageUrl matches on scheme alone — the same
+  // thing scan.js's isSystemPageUrl(tab.url) does once isNewTabish is false.
+  assert.equal(
+    detectNewTabOrExtension({ url: 'chrome://newtab/', pendingUrl: 'https://example.com' }),
+    JUNK_TYPES.INTERNAL,
+  );
 });
 
 test('detectErrorPage matches error indicators in page titles', () => {

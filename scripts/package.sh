@@ -13,7 +13,7 @@ STAGE="tmp/package"
 rm -rf "$STAGE"
 mkdir -p "$STAGE"
 
-cp manifest.json icon16.png icon32.png icon48.png icon128.png "$STAGE/"
+cp manifest.json assets/icons/icon16.png assets/icons/icon32.png assets/icons/icon48.png assets/icons/icon128.png "$STAGE/"
 cp -r src "$STAGE/src"
 
 rm -f "$OUT"

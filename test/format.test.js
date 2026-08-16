@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { relativeTime, prettyUrl, planToMarkdown } from '../src/lib/format.js';
 import { planCleanup } from '../src/lib/scan.js';
+import { planVacuum } from '../src/lib/vacuum.js';
 
 const NOW = 1_700_000_000_000;
 const MINUTE = 60_000;
@@ -64,10 +65,26 @@ test('planToMarkdown reports system tabs separately from other tabs', () => {
 
   const report = planToMarkdown(plan);
 
-  assert.match(report, /## System tabs — 1 offered/);
+  assert.match(report, /## System & other junk — 1 offered/);
   assert.match(report, /tab 1 · `chrome:\/\/settings\/`/);
-  assert.match(report, /## Protected system tabs — 1 kept/);
+  assert.match(report, /## Protected system & other junk — 1 kept/);
   assert.match(report, /tab 2 · pinned/);
+});
+
+test('planToMarkdown also reports a planVacuum()-shaped plan, junkTabs merged in by type', () => {
+  const tabs = [
+    { id: 1, windowId: 1, index: 0, url: 'about:blank', title: 'New Tab', groupId: -1 },
+    { id: 2, windowId: 1, index: 1, url: 'chrome://settings/', title: 'Settings', groupId: -1 },
+    { id: 3, windowId: 1, index: 2, url: 'https://example.com/login', title: 'Sign In', groupId: -1 },
+  ];
+  const { plan } = planVacuum(tabs);
+
+  const report = planToMarkdown(plan);
+
+  assert.match(report, /## Unused new tabs — 1 offered/);
+  assert.match(report, /## System & other junk — 2 offered/);
+  assert.match(report, /tab 2 · internal · `chrome:\/\/settings\/`/);
+  assert.match(report, /tab 3 · auth_or_transactional · `https:\/\/example\.com\/login`/);
 });
 
 test('planToMarkdown names the tab group and flags protected copies', () => {

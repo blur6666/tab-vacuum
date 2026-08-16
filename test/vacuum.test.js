@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { planVacuum } from '../src/lib/vacuum.js';
-import { closeTabs } from '../src/lib/execute.js';
+import { closeTabs, bulkSelection } from '../src/lib/execute.js';
 import { MissingTabsPermissionError } from '../src/lib/scan.js';
 
 let nextId = 100;
@@ -89,6 +89,22 @@ test('planVacuum respects privacy blocklist', () => {
 
   assert.ok(result.protectedJunkTabs.some((t) => t.id === bankAuth.id));
   assert.ok(result.junkTabs.some((t) => t.id === publicAuth.id));
+});
+
+test('planVacuum treats an ordinary system tab as junk, and bulkSelection sweeps it — unlike Kill Em All on planCleanup', () => {
+  // Vacuum 'em all! is now the same button on the popup and the review page,
+  // with the same maximal reach: unlike planCleanup's plan.systemTabs (which
+  // bulkSelection deliberately skips), planVacuum reports a system tab like
+  // Settings via plan.junkTabs, which bulkSelection does walk.
+  const settings = tab({ url: 'chrome://settings/', title: 'Settings' });
+  const other = filler();
+
+  const result = planVacuum([settings, other]);
+
+  assert.equal(result.junkTabs.some((t) => t.id === settings.id), true);
+  assert.equal(result.junkTabs.find((t) => t.id === settings.id).junkType, 'internal');
+  assert.ok(result.closableIds.includes(settings.id));
+  assert.ok(bulkSelection(result.plan).includes(settings.id));
 });
 
 test('planVacuum throws MissingTabsPermissionError when tab urls are undefined', () => {

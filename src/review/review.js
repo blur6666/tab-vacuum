@@ -5,16 +5,24 @@ import {
   hasTabGroupsPermission,
   requestTabGroupsPermission,
 } from '../lib/permissions.js';
-import { planCleanup, MissingTabsPermissionError, TAB_GROUP_ID_NONE } from '../lib/scan.js';
+import { MissingTabsPermissionError, TAB_GROUP_ID_NONE } from '../lib/scan.js';
+import { planVacuum } from '../lib/vacuum.js';
 import { closeTabs, bulkSelection, closableTabs } from '../lib/execute.js';
 import { relativeTime, planToMarkdown, prettyUrl } from '../lib/format.js';
 import { CONFIRM_REVERT_MS } from '../lib/config.js';
 
 const $ = (id) => document.getElementById(id);
 
+const JUNK_TYPE_LABELS = {
+  extension: 'extension page',
+  internal: 'internal page',
+  error: 'error page',
+  auth_or_transactional: 'sign-in / checkout',
+};
+
 const groupsEl = $('groups');
 const newTabsEl = $('new-tabs');
-const systemTabsEl = $('system-tabs');
+const junkTabsEl = $('junk-tabs');
 const otherTabsEl = $('other-tabs');
 const onlyActionable = $('only-actionable');
 const summary = $('summary');
@@ -23,7 +31,7 @@ const outcome = $('outcome');
 const actionBar = $('action-bar');
 const selectionCount = $('selection-count');
 const closeSelected = $('close-selected');
-const killEmAll = $('kill-em-all');
+const vacuumEmAll = $('vacuum-em-all');
 const groupNamesButton = $('group-names');
 
 let lastPlan = null;
@@ -53,7 +61,7 @@ async function load() {
   selfTabId = self;
   tabGroups = groups;
 
-  const plan = planCleanup(tabs, { selfTabId: self });
+  const { plan } = planVacuum(tabs, { selfTabId: self });
   lastPlan = plan;
 
   // A tab that vanished between scans must not stay ticked.
@@ -74,10 +82,11 @@ function render(plan) {
   disarmAll();
 
   const duplicateTabs = plan.duplicateGroups.reduce((sum, group) => sum + group.count, 0);
-  const systemTabs = plan.systemTabs ?? [];
+  const newTabs = (plan.junkTabs ?? []).filter((tab) => tab.junkType === 'new_tab');
+  const otherJunk = (plan.junkTabs ?? []).filter((tab) => tab.junkType !== 'new_tab');
   const parts = [];
-  if (plan.unusedNewTabs.length) parts.push(`${plan.unusedNewTabs.length} unused new tabs`);
-  if (systemTabs.length) parts.push(`${systemTabs.length} system tabs`);
+  if (newTabs.length) parts.push(`${newTabs.length} unused new tabs`);
+  if (otherJunk.length) parts.push(`${otherJunk.length} other junk`);
   if (plan.duplicateGroups.length) {
     parts.push(
       `${plan.duplicateGroups.length} duplicate group` +
@@ -90,12 +99,12 @@ function render(plan) {
     : `Scanned ${plan.totals.considered} tabs. Nothing to clean up.`;
 
   renderNewTabs(plan);
-  renderSystemTabs(plan);
+  renderJunk(plan);
   renderDuplicates(plan);
   renderOther(plan);
 
   const hasAnything =
-    plan.unusedNewTabs.length > 0 || systemTabs.length > 0 || plan.duplicateGroups.length > 0;
+    newTabs.length > 0 || otherJunk.length > 0 || plan.duplicateGroups.length > 0;
   $('empty').classList.toggle('hidden', hasAnything);
   actionBar.classList.toggle('hidden', !hasAnything);
 
@@ -112,28 +121,37 @@ function render(plan) {
 
 function renderNewTabs(plan) {
   const rows = [
-    ...plan.unusedNewTabs.map((tab) => renderRow(tab, { label: prettyUrl(tab.url) })),
-    ...plan.protectedTabs.map((tab) =>
-      renderRow(tab, { label: prettyUrl(tab.url), protections: tab.reasons }),
-    ),
+    ...(plan.junkTabs ?? [])
+      .filter((tab) => tab.junkType === 'new_tab')
+      .map((tab) => renderRow(tab, { label: prettyUrl(tab.url) })),
+    ...(plan.protectedJunkTabs ?? [])
+      .filter((tab) => tab.junkType === 'new_tab')
+      .map((tab) => renderRow(tab, { label: prettyUrl(tab.url), protections: tab.reasons })),
   ];
 
   newTabsEl.replaceChildren(...rows);
   $('new-tabs-section').classList.toggle('hidden', rows.length === 0);
 }
 
-function renderSystemTabs(plan) {
+function renderJunk(plan) {
   const rows = [
-    ...(plan.systemTabs ?? []).map((tab) =>
-      renderRow(tab, { label: tab.title || prettyUrl(tab.url) }),
-    ),
-    ...(plan.protectedSystemTabs ?? []).map((tab) =>
-      renderRow(tab, { label: tab.title || prettyUrl(tab.url), protections: tab.reasons }),
-    ),
+    ...(plan.junkTabs ?? [])
+      .filter((tab) => tab.junkType !== 'new_tab')
+      .map((tab) =>
+        renderRow(tab, {
+          label: tab.title || prettyUrl(tab.url),
+          note: JUNK_TYPE_LABELS[tab.junkType] ?? null,
+        }),
+      ),
+    ...(plan.protectedJunkTabs ?? [])
+      .filter((tab) => tab.junkType !== 'new_tab')
+      .map((tab) =>
+        renderRow(tab, { label: tab.title || prettyUrl(tab.url), protections: tab.reasons }),
+      ),
   ];
 
-  systemTabsEl.replaceChildren(...rows);
-  $('system-tabs-section').classList.toggle('hidden', rows.length === 0);
+  junkTabsEl.replaceChildren(...rows);
+  $('junk-section').classList.toggle('hidden', rows.length === 0);
 }
 
 function renderDuplicates(plan) {
@@ -320,9 +338,13 @@ for (const button of document.querySelectorAll('.select-all')) {
 
     const ids =
       button.dataset.scope === 'new-tabs'
-        ? lastPlan.unusedNewTabs.filter((tab) => tab.closable).map((tab) => tab.id)
-        : button.dataset.scope === 'system-tabs'
-          ? (lastPlan.systemTabs ?? []).filter((tab) => tab.closable).map((tab) => tab.id)
+        ? (lastPlan.junkTabs ?? [])
+            .filter((tab) => tab.junkType === 'new_tab' && tab.closable)
+            .map((tab) => tab.id)
+        : button.dataset.scope === 'junk'
+          ? (lastPlan.junkTabs ?? [])
+              .filter((tab) => tab.junkType !== 'new_tab' && tab.closable)
+              .map((tab) => tab.id)
           : lastPlan.duplicateGroups.flatMap((group) =>
               group.tabs.filter((tab) => tab.closable && !tab.isKeeper).map((tab) => tab.id),
             );
@@ -382,7 +404,7 @@ closeSelected.addEventListener('click', () => {
   arm(closeSelected, `Close ${selected.size}? — click again`, () => run([...selected]));
 });
 
-killEmAll.addEventListener('click', () => {
+vacuumEmAll.addEventListener('click', () => {
   if (!lastPlan) return;
 
   // Tick everything it would take, so the second click confirms a selection
@@ -394,13 +416,13 @@ killEmAll.addEventListener('click', () => {
   syncCheckboxes();
   updateSelectionUi();
 
-  arm(killEmAll, `Kill ${ids.length}? — click again`, () => run(ids));
+  arm(vacuumEmAll, `Closing ${ids.length}? — click again`, () => run(ids));
 });
 
 async function run(ids) {
   status.textContent = 'Closing…';
   closeSelected.disabled = true;
-  killEmAll.disabled = true;
+  vacuumEmAll.disabled = true;
 
   try {
     const result = await closeTabs(lastPlan, ids, { selfTabId });
@@ -410,7 +432,7 @@ async function run(ids) {
   } catch (error) {
     showError(error);
   } finally {
-    killEmAll.disabled = false;
+    vacuumEmAll.disabled = false;
     closeSelected.disabled = selected.size === 0;
   }
 }
@@ -509,10 +531,8 @@ function rescanHandlers() {
 /** Every tab the plan reports, whatever section it lands in. */
 function everyReportedTab(plan) {
   return [
-    ...plan.unusedNewTabs,
-    ...plan.protectedTabs,
-    ...(plan.systemTabs ?? []),
-    ...(plan.protectedSystemTabs ?? []),
+    ...(plan.junkTabs ?? []),
+    ...(plan.protectedJunkTabs ?? []),
     ...(plan.otherTabs ?? []),
     ...plan.duplicateGroups.flatMap((group) => group.tabs),
   ];

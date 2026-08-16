@@ -3,6 +3,8 @@
  * Pure functions for local, deterministic classification of low-value and operational tabs.
  */
 
+import { isNewTabUrl, isSystemPageUrl } from './url.js';
+
 export const JUNK_TYPES = {
   NEW_TAB: 'new_tab',
   EXTENSION: 'extension',
@@ -87,10 +89,19 @@ export function isScriptableUrl(url) {
  * @returns {'new_tab' | 'extension' | 'internal' | null}
  */
 export function detectNewTabOrExtension(tab) {
-  const url = (tab?.url || '').toLowerCase();
+  const rawUrl = tab?.url ?? '';
+  const url = rawUrl.toLowerCase();
   const title = (tab?.title || '').toLowerCase();
 
-  if (url === 'about:blank' || url.startsWith('chrome://newtab') || url.startsWith('edge://newtab') || title === 'new tab') {
+  // isNewTabUrl is the same predicate scan.js uses — it already covers every
+  // Chromium-family new-tab variant (config.js: NEW_TAB_URLS), including the
+  // Brave/Edge quirks, plus an uncommitted tab's empty url. The pendingUrl
+  // check mirrors scan.js's isNewTabish: a tab mid-navigation away from the
+  // new-tab page is real content arriving, never a candidate.
+  const pendingUrl = tab?.pendingUrl;
+  const committedIsNewTab = isNewTabUrl(rawUrl) || title === 'new tab';
+  const pendingIsNewTab = pendingUrl === undefined || pendingUrl === '' || isNewTabUrl(pendingUrl);
+  if (committedIsNewTab && pendingIsNewTab) {
     return 'new_tab';
   }
 
@@ -98,7 +109,16 @@ export function detectNewTabOrExtension(tab) {
     return 'extension';
   }
 
-  if (url.startsWith('chrome://') || url.startsWith('edge://') || url.startsWith('about:') || url.startsWith('devtools://') || url.startsWith('view-source:')) {
+  // isSystemPageUrl matches the same SYSTEM_URL_SCHEMES scan.js uses (chrome,
+  // edge, brave, vivaldi, opera). about:/devtools://view-source: are added on
+  // top — scan.js has no equivalent for those since they are not http/https
+  // and never entered duplicate detection either.
+  if (
+    isSystemPageUrl(rawUrl) ||
+    url.startsWith('about:') ||
+    url.startsWith('devtools://') ||
+    url.startsWith('view-source:')
+  ) {
     return 'internal';
   }
 

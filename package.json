@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Brave extension that finds unused new-tab pages and duplicated tabs, helping you remove.",
+  "description": "Brave extension that finds and vacuums away duplicate tabs, unused new tabs, and other junk.",
   "scripts": {
     "test": "node --test",
     "package": "bash scripts/package.sh"

@@ -49,14 +49,18 @@ export function closableTabs(plan) {
 }
 
 /**
- * What "Kill 'Em All" selects: every unused new tab, plus every duplicate
- * except the one copy each group keeps.
+ * What "Vacuum 'em all!" selects, on both the popup and the review page:
+ * every tab in plan.junkTabs (unused new tabs, system/internal pages, other
+ * extensions' pages, error pages, auth/transactional pages) plus every
+ * duplicate except the one copy each group keeps.
  *
- * System tabs are deliberately not included — Settings or Downloads sitting
- * open is a much more common, intentional thing than a stray new-tab page,
- * so that section gets its own "select all" instead of riding along with the
- * one-click danger button. closableTabs() still includes them, so ticking
- * one by hand and using "Close selected" works the same as anything else.
+ * plan.systemTabs is deliberately not walked here — that field only exists on
+ * a planCleanup()-shaped plan (used by the popup's own "Scan my tabs"
+ * preview), where system tabs are reported as their own thing rather than as
+ * junkTabs. planVacuum() puts the same kind of tab in plan.junkTabs instead,
+ * which this function does walk — see vacuum.test.js. closableTabs() covers
+ * both fields, so ticking a plan.systemTabs row by hand and using "Close
+ * selected" still works wherever that shape is in play.
  */
 export function bulkSelection(plan) {
   const ids = [];

@@ -44,9 +44,32 @@ export function prettyUrl(url, maxLength = 72) {
  *
  * It lists real URLs and titles, so it is yours to read, not something to
  * paste anywhere. Nothing sends it; the clipboard is the only exit.
+ *
+ * Shape-agnostic: accepts either a planCleanup()-shaped plan (the popup's own
+ * "Scan my tabs" — unusedNewTabs/systemTabs) or a planVacuum()-shaped one (the
+ * review page, and what both Vacuum 'em all! buttons act on — junkTabs tagged
+ * with junkType). Each source is empty on the plan shape that does not use it,
+ * so merging them is safe either way.
  */
 export function planToMarkdown(plan) {
   const lines = [];
+
+  const newTabs = [
+    ...(plan.unusedNewTabs ?? []),
+    ...(plan.junkTabs ?? []).filter((tab) => tab.junkType === 'new_tab'),
+  ];
+  const protectedNewTabs = [
+    ...(plan.protectedTabs ?? []),
+    ...(plan.protectedJunkTabs ?? []).filter((tab) => tab.junkType === 'new_tab'),
+  ];
+  const otherJunk = [
+    ...(plan.systemTabs ?? []),
+    ...(plan.junkTabs ?? []).filter((tab) => tab.junkType && tab.junkType !== 'new_tab'),
+  ];
+  const protectedOtherJunk = [
+    ...(plan.protectedSystemTabs ?? []),
+    ...(plan.protectedJunkTabs ?? []).filter((tab) => tab.junkType && tab.junkType !== 'new_tab'),
+  ];
 
   lines.push('# Tab Cleanup report');
   lines.push('');
@@ -59,38 +82,38 @@ export function planToMarkdown(plan) {
   );
   lines.push('');
 
-  lines.push(`## Unused new tabs — ${plan.unusedNewTabs.length} offered`);
-  if (plan.unusedNewTabs.length === 0) lines.push('_none_');
-  for (const tab of plan.unusedNewTabs) {
+  lines.push(`## Unused new tabs — ${newTabs.length} offered`);
+  if (newTabs.length === 0) lines.push('_none_');
+  for (const tab of newTabs) {
     lines.push(
       `- window ${tab.windowId} · tab ${tab.id}${describeGroup(tab.groupId)} · \`${tab.url || '(blank)'}\``,
     );
   }
   lines.push('');
 
-  lines.push(`## Protected new tabs — ${plan.protectedTabs.length} kept`);
-  if (plan.protectedTabs.length === 0) lines.push('_none_');
-  for (const tab of plan.protectedTabs) {
+  lines.push(`## Protected new tabs — ${protectedNewTabs.length} kept`);
+  if (protectedNewTabs.length === 0) lines.push('_none_');
+  for (const tab of protectedNewTabs) {
     lines.push(
       `- window ${tab.windowId} · tab ${tab.id}${describeGroup(tab.groupId)} · ${tab.reasons.join(', ')}`,
     );
   }
   lines.push('');
 
-  const systemTabs = plan.systemTabs ?? [];
-  lines.push(`## System tabs — ${systemTabs.length} offered`);
-  if (systemTabs.length === 0) lines.push('_none_');
-  for (const tab of systemTabs) {
+  lines.push(`## System & other junk — ${otherJunk.length} offered`);
+  if (otherJunk.length === 0) lines.push('_none_');
+  for (const tab of otherJunk) {
     lines.push(
-      `- window ${tab.windowId} · tab ${tab.id}${describeGroup(tab.groupId)} · \`${tab.url}\``,
+      `- window ${tab.windowId} · tab ${tab.id}${describeGroup(tab.groupId)}` +
+        (tab.junkType ? ` · ${tab.junkType}` : '') +
+        ` · \`${tab.url}\``,
     );
   }
   lines.push('');
 
-  const protectedSystemTabs = plan.protectedSystemTabs ?? [];
-  lines.push(`## Protected system tabs — ${protectedSystemTabs.length} kept`);
-  if (protectedSystemTabs.length === 0) lines.push('_none_');
-  for (const tab of protectedSystemTabs) {
+  lines.push(`## Protected system & other junk — ${protectedOtherJunk.length} kept`);
+  if (protectedOtherJunk.length === 0) lines.push('_none_');
+  for (const tab of protectedOtherJunk) {
     lines.push(
       `- window ${tab.windowId} · tab ${tab.id}${describeGroup(tab.groupId)} · ${tab.reasons.join(', ')}`,
     );

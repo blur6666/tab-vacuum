@@ -81,12 +81,17 @@ test('tabs shown only for context can never be closed by any path', async () => 
   );
 });
 
-test('a system tab is closable on its own but is not part of Kill Em All', async () => {
+test('a system tab reported via plan.systemTabs is closable on its own but bulkSelection never reaches for that field', async () => {
+  // planCleanup() puts system tabs in plan.systemTabs, a field bulkSelection()
+  // does not walk. planVacuum() instead reports the same kind of tab in
+  // plan.junkTabs, which bulkSelection() does walk — see vacuum.test.js for
+  // proof that Vacuum 'em all! does sweep system tabs on both surfaces. This
+  // test only pins the low-level, shape-dependent behaviour of bulkSelection().
   const settings = tab({ url: 'chrome://settings/' });
   const plan = planCleanup([settings, tab({ url: 'https://filler.example/' })]);
 
   assert.ok(closableTabs(plan).has(settings.id), 'can be ticked and closed by hand');
-  assert.deepEqual(bulkSelection(plan), [], "Kill Em All doesn't reach for system tabs");
+  assert.deepEqual(bulkSelection(plan), [], 'bulkSelection does not walk plan.systemTabs');
 
   const closer = spyCloser();
   const result = await closeTabs(plan, [settings.id], {

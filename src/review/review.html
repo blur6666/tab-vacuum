@@ -35,16 +35,17 @@
         <div id="new-tabs" class="rows"></div>
       </section>
 
-      <section id="system-tabs-section" class="result-section hidden">
+      <section id="junk-section" class="result-section hidden">
         <div class="section-head">
-          <h2>System tabs</h2>
-          <button class="link select-all" type="button" data-scope="system-tabs">select all</button>
+          <h2>System &amp; other junk</h2>
+          <button class="link select-all" type="button" data-scope="junk">select all</button>
         </div>
         <p class="muted small">
-          Settings, Downloads, History, Extensions, and similar built-in pages — not part of
-          duplicate detection, offered here on their own.
+          Settings, Downloads, History, Extensions, other installed extensions' own pages, error
+          pages, and sign-in/checkout pages — not part of duplicate detection, offered here on
+          their own.
         </p>
-        <div id="system-tabs" class="rows"></div>
+        <div id="junk-tabs" class="rows"></div>
       </section>
 
       <section id="duplicates-section" class="result-section hidden">
@@ -74,7 +75,7 @@
       <span id="selection-count" class="muted"></span>
       <div class="actions">
         <button id="close-selected" type="button" disabled>Close selected</button>
-        <button id="kill-em-all" class="danger" type="button">Kill 'Em All</button>
+        <button id="vacuum-em-all" class="danger" type="button">Vacuum 'em all!</button>
       </div>
     </footer>
 

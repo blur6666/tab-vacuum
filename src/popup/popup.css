@@ -1,5 +1,5 @@
 body {
-  width: 350px;
+  width: 245px;
 }
 
 main {
@@ -16,6 +16,17 @@ header {
   align-items: center;
   gap: 8px;
 }
+
+h1 {
+  margin0;
+}s
+
+#ext-icon {
+  border: 1px solid color-mix(in srgb, #ffffff 65%, transparent);
+  border-radius: 6px;
+  box-shadow: 0 0 8px color-mix(in srgb, #ffffff 45%, transparent);
+}
+
 
 #scan-slot {
   display: flex;

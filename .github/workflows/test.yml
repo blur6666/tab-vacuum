@@ -1,0 +1,45 @@
+# Runs the suite that test/guards.test.js belongs to. Those guards are the
+# repo's structural guarantees — one file may close a tab, the manifest may
+# not grow — and until this workflow existed nothing ran them unless someone
+# remembered to. See BACKLOG.md.
+name: test
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# Least privilege: the suite reads the checkout and nothing else.
+permissions:
+  contents: read
+
+# A second push to the same branch makes the first run irrelevant.
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # 20.12 is the floor: test/guards.test.js walks src/ with
+        # readdirSync({ recursive: true }) and reads entry.parentPath, and
+        # parentPath landed in 20.12.0. 22 is what development actually uses.
+        # Node 18 is past end-of-life and is not tested.
+        node: ['20.12', '22']
+
+    name: node ${{ matrix.node }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+          # No cache: the project has no dependencies and no lockfile, which
+          # is also why there is no install step. `npm test` is `node --test`.
+
+      - run: npm test

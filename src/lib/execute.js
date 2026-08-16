@@ -188,3 +188,26 @@ function urlsById(plan) {
 
   return urls;
 }
+
+/**
+ * How many of these ids are the only tab in their window, so closing them
+ * closes the window too.
+ *
+ * Duplicates are the only tabs that can be in this position. A lone new-tab or
+ * system page never reaches a bulk selection at all, because
+ * PROTECT.soleTabInWindow keeps it out of the closable lists — while
+ * NEVER_CLOSE deliberately omits that rule for duplicates, which is why they
+ * are warned about rather than forbidden (CLAUDE.md rule 5).
+ */
+export function windowClosersIn(plan, ids) {
+  const wanted = new Set(ids);
+  let count = 0;
+
+  for (const group of plan.duplicateGroups ?? []) {
+    for (const tab of group.tabs) {
+      if (wanted.has(tab.id) && tab.closesWindow) count += 1;
+    }
+  }
+
+  return count;
+}

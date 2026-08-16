@@ -6,8 +6,8 @@ import {
   requestTabGroupsPermission,
 } from '../lib/permissions.js';
 import { planCleanup, MissingTabsPermissionError, TAB_GROUP_ID_NONE } from '../lib/scan.js';
-import { closeTabs, bulkSelection, closableTabs } from '../lib/execute.js';
-import { relativeTime, planToMarkdown, prettyUrl } from '../lib/format.js';
+import { closeTabs, bulkSelection, closableTabs, windowClosersIn } from '../lib/execute.js';
+import { relativeTime, planToMarkdown, prettyUrl, killPrompt } from '../lib/format.js';
 import { CONFIRM_REVERT_MS } from '../lib/config.js';
 
 const $ = (id) => document.getElementById(id);
@@ -394,7 +394,9 @@ killEmAll.addEventListener('click', () => {
   syncCheckboxes();
   updateSelectionUi();
 
-  arm(killEmAll, `Kill ${ids.length}? — click again`, () => run(ids));
+  // Says when some of those rows take their window with them. Each row already
+  // warns, but they can be scrolled off screen by the time you confirm.
+  arm(killEmAll, killPrompt(ids.length, windowClosersIn(lastPlan, ids)), () => run(ids));
 });
 
 async function run(ids) {

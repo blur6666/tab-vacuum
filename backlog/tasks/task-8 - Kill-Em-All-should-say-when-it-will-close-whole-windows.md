@@ -1,9 +1,10 @@
 ---
 id: TASK-8
 title: Kill 'Em All should say when it will close whole windows
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-16 19:52'
+updated_date: '2026-08-16 20:28'
 labels: []
 dependencies: []
 ordinal: 7000
@@ -17,8 +18,14 @@ CODE-REVIEW.md finding 7. bulkSelection() includes non-keeper duplicates regardl
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 When the bulk selection contains tabs with closesWindow, the armed Kill 'Em All prompt says how many
-- [ ] #2 The prompt is unchanged when no selected tab closes a window
-- [ ] #3 The existing documented decision stands — closesWindow still does not become a hard protection
-- [ ] #4 A test covers the prompt text in both cases
+- [x] #1 When the bulk selection contains tabs with closesWindow, the armed Kill 'Em All prompt says how many
+- [x] #2 The prompt is unchanged when no selected tab closes a window
+- [x] #3 The existing documented decision stands — closesWindow still does not become a hard protection
+- [x] #4 A test covers the prompt text in both cases
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Done, with a finding that shrinks how often it matters. windowClosersIn() in execute.js counts selected duplicates that are alone in their window; killPrompt() in format.js builds the label, so the text is pure and testable. The armed prompt now reads 'Kill 14 (2 close their windows)? — click again', and is unchanged when nothing closes a window. Finding, from three failed attempts to trigger it in a real browser: a tab alone in its window is necessarily the ACTIVE tab of that window, and active outranks most-recently-used on the keeper ladder — so the ordinary window-closing duplicate becomes the star and Kill 'Em All already leaves it alone. The warning is reachable only when another copy outranks it, for instance a pinned copy. Both cases are now tested. The safety net is cheap and correct, but the common case was already safe by construction rather than by warning, which is worth knowing before anyone builds more on top of closesWindow.
+<!-- SECTION:FINAL_SUMMARY:END -->

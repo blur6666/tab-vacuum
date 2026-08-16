@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { relativeTime, prettyUrl, planToMarkdown } from '../src/lib/format.js';
+import { relativeTime, prettyUrl, planToMarkdown, killPrompt } from '../src/lib/format.js';
 import { planCleanup } from '../src/lib/scan.js';
 
 const NOW = 1_700_000_000_000;
@@ -80,4 +80,14 @@ test('planToMarkdown names the tab group and flags protected copies', () => {
 
   assert.match(report, /×2 · tab group 4/);
   assert.match(report, /protected \(audible\)/);
+});
+
+test("killPrompt says nothing extra when no selected tab closes a window", () => {
+  assert.equal(killPrompt(14, 0), 'Kill 14? — click again');
+  assert.equal(killPrompt(1), 'Kill 1? — click again', 'defaults to none');
+});
+
+test("killPrompt names how many windows go, singular and plural", () => {
+  assert.equal(killPrompt(14, 1), 'Kill 14 (1 closes its window)? — click again');
+  assert.equal(killPrompt(14, 3), 'Kill 14 (3 close their windows)? — click again');
 });

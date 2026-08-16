@@ -8,7 +8,7 @@
  */
 
 import { queryAllTabs, openReviewPage } from '../lib/chrome-tabs.js';
-import { requestTabsPermission } from '../lib/permissions.js';
+import { hasTabsPermission, requestTabsPermission } from '../lib/permissions.js';
 import { planCleanup, MissingTabsPermissionError } from '../lib/scan.js';
 import { planVacuum } from '../lib/vacuum.js';
 import { closeTabs } from '../lib/execute.js';
@@ -37,6 +37,18 @@ let armedVacuumTimer = null;
 scanButton.textContent = SCAN;
 vacuumButton.textContent = VACUUM;
 
+// Check initially if there are any vacuum candidates to set initial disabled state
+hasTabsPermission().then(async (granted) => {
+  if (!granted) return;
+  try {
+    const tabs = await queryAllTabs();
+    const result = planVacuum(tabs);
+    if (result.totalClosable === 0) {
+      vacuumButton.disabled = true;
+    }
+  } catch {}
+});
+
 scanButton.addEventListener('click', () => {
   disarmVacuum();
   const granted = requestTabsPermission();
@@ -50,7 +62,6 @@ scanButton.addEventListener('click', () => {
     .catch(showError)
     .finally(() => {
       scanButton.disabled = false;
-      vacuumButton.disabled = false;
     });
 });
 
@@ -68,7 +79,7 @@ vacuumButton.addEventListener('click', async () => {
 
   scanButton.disabled = true;
   vacuumButton.disabled = true;
-  setStatus('Scanning for duplicates & junk…');
+  setStatus('Scanning…');
 
   try {
     const tabs = await queryAllTabs();
@@ -79,27 +90,31 @@ vacuumButton.addEventListener('click', async () => {
     vacuumPlan = result;
 
     if (result.totalClosable === 0) {
-      setStatus('Nothing to vacuum — no duplicate or junk tabs found.');
+      setStatus('');
+      vacuumButton.disabled = true;
       disarmVacuum();
       return;
     }
 
     armVacuum(result.totalClosable);
-    setStatus(
-      `Found ${result.totalClosable} tab${result.totalClosable === 1 ? '' : 's'} to vacuum ` +
-        `(${result.junkTabs.length} junk, ${result.totalClosable - result.junkTabs.length} duplicate${result.totalClosable - result.junkTabs.length === 1 ? '' : 's'}).`,
-    );
   } catch (error) {
     showError(error);
     disarmVacuum();
+    vacuumButton.disabled = false;
   } finally {
     scanButton.disabled = false;
-    vacuumButton.disabled = false;
+    if (vacuumPlan && vacuumPlan.totalClosable > 0) {
+      vacuumButton.disabled = false;
+    }
   }
 });
 
 function armVacuum(count) {
-  disarmVacuum();
+  if (armedVacuumTimer) {
+    clearTimeout(armedVacuumTimer);
+    armedVacuumTimer = null;
+  }
+  setStatus('');
   vacuumButton.textContent = `Closing ${count} tab${count === 1 ? '' : 's'}, ok?`;
   vacuumButton.classList.add('armed');
   armedVacuumTimer = setTimeout(() => {
@@ -115,6 +130,7 @@ function disarmVacuum() {
   vacuumButton.textContent = VACUUM;
   vacuumButton.classList.remove('armed');
   vacuumPlan = null;
+  setStatus('');
 }
 
 async function executeVacuum() {
@@ -124,27 +140,20 @@ async function executeVacuum() {
 
   scanButton.disabled = true;
   vacuumButton.disabled = true;
-  setStatus('Closing tabs…');
 
   try {
-    const result = await closeTabs(currentVacuum.plan, currentVacuum.closableIds);
-    if (result.closed > 0) {
-      setStatus(
-        `Closed ${result.closed} tab${result.closed === 1 ? '' : 's'}. ` +
-          `Ctrl+Shift+T reopens them if needed.`,
-      );
-    } else {
-      setStatus('Nothing was closed.');
-    }
+    await closeTabs(currentVacuum.plan, currentVacuum.closableIds);
+    setStatus('');
 
     if (!results.classList.contains('hidden')) {
       await scan();
     }
   } catch (error) {
     showError(error);
+    vacuumButton.disabled = false;
   } finally {
     scanButton.disabled = false;
-    vacuumButton.disabled = false;
+    vacuumButton.disabled = true;
   }
 }
 
@@ -155,6 +164,9 @@ async function scan() {
   }
   const plan = planCleanup(tabs);
   lastPlan = plan;
+
+  const vacuumRes = planVacuum(tabs);
+  vacuumButton.disabled = vacuumRes.totalClosable === 0;
 
   render(plan);
 }

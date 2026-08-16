@@ -14,9 +14,14 @@
 
       <div id="scan-slot">
         <button id="scan" class="primary" type="button">Scan my tabs</button>
+        <button id="vacuum" class="danger-solid" type="button">Vacuum 'em all!</button>
       </div>
 
       <p id="status" class="muted status"></p>
+
+      <!-- What Vacuum is about to close, listed while the button is armed.
+           CLAUDE.md rule 2: the confirm names its targets, never just counts. -->
+      <ul id="vacuum-list" class="hidden detail-list"></ul>
 
       <section id="results" class="hidden">
         <p id="totals" class="muted"></p>

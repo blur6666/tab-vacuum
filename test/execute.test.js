@@ -198,6 +198,48 @@ test('a tab that became pinned or audible since the scan is skipped', async () =
   }
 });
 
+test('a new tab that became the sole tab in its window since the scan is skipped', async () => {
+  const junk = tab({ url: 'chrome://newtab/', windowId: 1 });
+  const filler = tab({ url: 'https://filler.example/', windowId: 1 });
+  const plan = planCleanup([junk, filler]);
+
+  // filler was closed by user after scan, leaving junk as sole tab in window 1
+  const closer = spyCloser();
+  const result = await closeTabs(plan, [junk.id], { closer, snapshot: unchanged([junk]) });
+
+  assert.equal(result.closed, 0);
+  assert.deepEqual(result.skipped, [{ id: junk.id, reason: 'now only tab in window' }]);
+  assert.deepEqual(closer.calls, []);
+});
+
+test('a new tab added to a group since the scan is skipped', async () => {
+  const junk = tab({ url: 'chrome://newtab/', groupId: -1 });
+  const filler = tab({ url: 'https://filler.example/' });
+  const plan = planCleanup([junk, filler]);
+
+  const now = [{ ...junk, groupId: 42 }, filler];
+  const closer = spyCloser();
+  const result = await closeTabs(plan, [junk.id], { closer, snapshot: unchanged(now) });
+
+  assert.equal(result.closed, 0);
+  assert.deepEqual(result.skipped, [{ id: junk.id, reason: 'now grouped' }]);
+  assert.deepEqual(closer.calls, []);
+});
+
+test('a tab that started navigating to real content since the scan is skipped', async () => {
+  const junk = tab({ url: 'chrome://newtab/' });
+  const filler = tab({ url: 'https://filler.example/' });
+  const plan = planCleanup([junk, filler]);
+
+  const now = [{ ...junk, pendingUrl: 'https://real-site.com/article' }, filler];
+  const closer = spyCloser();
+  const result = await closeTabs(plan, [junk.id], { closer, snapshot: unchanged(now) });
+
+  assert.equal(result.closed, 0);
+  assert.deepEqual(result.skipped, [{ id: junk.id, reason: 'navigating since the scan' }]);
+  assert.deepEqual(closer.calls, []);
+});
+
 test('a tab the user already closed is skipped without an error', async () => {
   const junk = tab({ url: 'chrome://newtab/' });
   const filler = tab({ url: 'https://filler.example/' });

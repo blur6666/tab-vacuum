@@ -394,7 +394,7 @@ killEmAll.addEventListener('click', () => {
   syncCheckboxes();
   updateSelectionUi();
 
-  arm(killEmAll, `Kill ${ids.length}? — click again`, () => run([...selected]));
+  arm(killEmAll, `Kill ${ids.length}? — click again`, () => run(ids));
 });
 
 async function run(ids) {
@@ -411,6 +411,7 @@ async function run(ids) {
     showError(error);
   } finally {
     killEmAll.disabled = false;
+    closeSelected.disabled = selected.size === 0;
   }
 }
 

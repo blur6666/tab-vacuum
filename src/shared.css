@@ -79,8 +79,22 @@ button.danger:hover:not(:disabled) {
   border-color: light-dark(#a52218, #ff9f96);
 }
 
+button.danger-solid {
+  background: light-dark(#d93025, #c5221f);
+  border-color: light-dark(#d93025, #c5221f);
+  color: #ffffff;
+  font-weight: 600;
+  padding: 9px 12px;
+}
+
+button.danger-solid:hover:not(:disabled) {
+  background: light-dark(#b3261e, #a81c19);
+  border-color: light-dark(#b3261e, #a81c19);
+}
+
 /** The armed half of a two-click confirm. Loud on purpose. */
-button.armed {
+button.armed,
+button.danger-solid.armed {
   background: light-dark(#a52218, #ff9f96);
   border-color: light-dark(#a52218, #ff9f96);
   color: light-dark(#ffffff, #2a0f0c);

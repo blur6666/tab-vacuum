@@ -28,9 +28,8 @@ h1 {
 }
 
 #ext-icon {
-  border: 1px solid color-mix(in srgb, #ffffff 65%, transparent);
   border-radius: 6px;
-  box-shadow: 0 0 8px color-mix(in srgb, #ffffff 45%, transparent);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, #ffffff 55%, transparent));
 }
 
 

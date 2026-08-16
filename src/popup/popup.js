@@ -10,7 +10,7 @@
 import { queryAllTabs, openReviewPage } from '../lib/chrome-tabs.js';
 import { hasTabsPermission, requestTabsPermission } from '../lib/permissions.js';
 import { planCleanup, MissingTabsPermissionError } from '../lib/scan.js';
-import { planVacuum } from '../lib/vacuum.js';
+import { planVacuum, vacuumPreview } from '../lib/vacuum.js';
 import { closeTabs } from '../lib/execute.js';
 import { planToMarkdown, prettyUrl } from '../lib/format.js';
 import { DEBUG_LOG_SCANNED_TABS, CONFIRM_REVERT_MS } from '../lib/config.js';
@@ -23,6 +23,7 @@ const VACUUM = "Vacuum 'em all!";
 
 const scanButton = $('scan');
 const vacuumButton = $('vacuum');
+const vacuumList = $('vacuum-list');
 const status = $('status');
 const results = $('results');
 const toggleProtected = $('toggle-protected');
@@ -96,7 +97,7 @@ vacuumButton.addEventListener('click', async () => {
       return;
     }
 
-    armVacuum(result.totalClosable);
+    armVacuum(result);
   } catch (error) {
     showError(error);
     disarmVacuum();
@@ -109,14 +110,35 @@ vacuumButton.addEventListener('click', async () => {
   }
 });
 
-function armVacuum(count) {
+/**
+ * Arm the confirm, and list every tab it will close.
+ *
+ * The list is the reason the popup is allowed to close anything at all
+ * (CLAUDE.md rule 2). A bare count is not a confirm you can check — it tells
+ * you how many things you are about to lose, not which.
+ */
+function armVacuum(result) {
   if (armedVacuumTimer) {
     clearTimeout(armedVacuumTimer);
     armedVacuumTimer = null;
   }
   setStatus('');
+
+  const count = result.totalClosable;
   vacuumButton.textContent = `Closing ${count} tab${count === 1 ? '' : 's'}, ok?`;
   vacuumButton.classList.add('armed');
+
+  vacuumList.replaceChildren(
+    ...vacuumPreview(result.plan).map((row) => {
+      const li = document.createElement('li');
+      // textContent throughout: these are real page titles and urls.
+      li.textContent = `${row.title || prettyUrl(row.url)} — ${row.why}`;
+      li.title = row.url;
+      return li;
+    }),
+  );
+  vacuumList.classList.remove('hidden');
+
   armedVacuumTimer = setTimeout(() => {
     disarmVacuum();
   }, CONFIRM_REVERT_MS);
@@ -129,6 +151,8 @@ function disarmVacuum() {
   }
   vacuumButton.textContent = VACUUM;
   vacuumButton.classList.remove('armed');
+  vacuumList.replaceChildren();
+  vacuumList.classList.add('hidden');
   vacuumPlan = null;
   setStatus('');
 }

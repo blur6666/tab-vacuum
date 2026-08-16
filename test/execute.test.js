@@ -15,6 +15,7 @@ import {
   selectClosable,
   bulkSelection,
   closableTabs,
+  windowClosersIn,
 } from '../src/lib/execute.js';
 
 let nextId = 1;
@@ -296,4 +297,62 @@ test('an empty selection never touches the browser', async () => {
 
   assert.deepEqual(result, { closed: 0, closedIds: [], skipped: [] });
   assert.deepEqual(closer.calls, []);
+});
+
+test('windowClosersIn counts the selected duplicates that are alone in a window', () => {
+  // Window 1 keeps two tabs, so closing the copy there costs nothing extra.
+  // Window 2 holds a single copy — closing it closes the window.
+  const keeper = tab({ url: 'https://example.com/a', windowId: 1, index: 0, active: true });
+  const copyBeside = tab({ url: 'https://example.com/a', windowId: 1, index: 1 });
+  const copyAlone = tab({ url: 'https://example.com/a', windowId: 2, index: 0 });
+
+  const plan = planCleanup([keeper, copyBeside, copyAlone]);
+  const ids = bulkSelection(plan);
+
+  assert.deepEqual([...ids].sort((a, b) => a - b), [copyBeside.id, copyAlone.id].sort((a, b) => a - b));
+  assert.equal(windowClosersIn(plan, ids), 1, 'only the lone copy takes a window');
+  assert.equal(windowClosersIn(plan, [copyBeside.id]), 0);
+  assert.equal(windowClosersIn(plan, []), 0);
+});
+
+test('windowClosersIn ignores ids that are not duplicates', () => {
+  // A lone new tab or system page never reaches a bulk selection —
+  // PROTECT.soleTabInWindow holds it back — so nothing else can be counted.
+  const junk = tab({ url: 'chrome://newtab/', windowId: 1, index: 0 });
+  const filler = tab({ url: 'https://filler.example/', windowId: 1, index: 1 });
+  const plan = planCleanup([junk, filler]);
+
+  assert.equal(windowClosersIn(plan, bulkSelection(plan)), 0);
+  assert.equal(windowClosersIn(plan, [9999]), 0, 'an unknown id counts as nothing');
+});
+
+test('a lone duplicate is usually the keeper already, so nothing is selected to close a window', () => {
+  // Structural, and worth stating: a tab alone in its window is necessarily the
+  // active tab of that window, and `active` outranks `most recently used` on
+  // the keeper ladder. So the common window-closing duplicate becomes the ★ and
+  // Kill 'Em All leaves it alone without needing any warning at all.
+  const beside = tab({ url: 'https://example.com/w', windowId: 1, index: 1 });
+  const filler = tab({ url: 'https://filler.example/', windowId: 1, index: 2 });
+  const alone = tab({ url: 'https://example.com/w', windowId: 2, index: 0, active: true });
+
+  const plan = planCleanup([beside, filler, alone]);
+  const group = plan.duplicateGroups[0];
+
+  assert.equal(group.tabs.find((t) => t.isKeeper).id, alone.id, 'the lone copy is the ★');
+  assert.equal(windowClosersIn(plan, bulkSelection(plan)), 0, 'so nothing selected closes a window');
+});
+
+test('a window-closing duplicate that is not the keeper is counted', () => {
+  // Reachable when another copy outranks it: pinned beats active.
+  const pinnedKeeper = tab({ url: 'https://example.com/x', windowId: 1, index: 0, pinned: true });
+  const filler = tab({ url: 'https://filler.example/', windowId: 1, index: 1 });
+  const alone = tab({ url: 'https://example.com/x', windowId: 2, index: 0, active: true });
+
+  const plan = planCleanup([pinnedKeeper, filler, alone]);
+  const group = plan.duplicateGroups[0];
+
+  assert.equal(group.tabs.find((t) => t.isKeeper).id, pinnedKeeper.id);
+  assert.ok(group.tabs.find((t) => t.id === alone.id).closesWindow);
+  assert.deepEqual(bulkSelection(plan), [alone.id]);
+  assert.equal(windowClosersIn(plan, bulkSelection(plan)), 1);
 });

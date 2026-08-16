@@ -133,3 +133,20 @@ export function planToMarkdown(plan) {
 function describeGroup(groupId) {
   return groupId === undefined || groupId === -1 ? '' : ` · tab group ${groupId}`;
 }
+
+/**
+ * The armed label for Kill 'Em All.
+ *
+ * A bare count hides the one consequence that is not undone by reopening a tab:
+ * some of those rows are alone in their window, so closing them closes the
+ * window. Each such row already says so, but Kill 'Em All ticks them all at
+ * once and the warnings can sit off screen — the per-row warning was designed
+ * for per-row decisions.
+ */
+export function killPrompt(count, windowClosers = 0) {
+  if (windowClosers <= 0) return `Kill ${count}? — click again`;
+
+  const tail =
+    windowClosers === 1 ? '1 closes its window' : `${windowClosers} close their windows`;
+  return `Kill ${count} (${tail})? — click again`;
+}

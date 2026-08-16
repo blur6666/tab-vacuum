@@ -66,7 +66,7 @@ const ctx = await chromium.launchPersistentContext(PROFILE, {
 const probe = await ctx.newPage();
 await probe.goto('chrome://extensions-internals/');
 const list = JSON.parse(await probe.evaluate(() => document.body.innerText));
-const me = list.find((e) => e.name === 'Tab Vacuum' || e.name === 'Tab Cleanup');
+const me = list.find((e) => e.name === 'Tab Vacuum');
 await probe.close();
 
 for (let i = 0; i < JUNK_COUNT; i++) {

@@ -84,7 +84,7 @@ const ctx = await chromium.launchPersistentContext(PROFILE, {
 const probe = await ctx.newPage();
 await probe.goto('chrome://extensions-internals/');
 const parsed = JSON.parse(await probe.evaluate(() => document.body.innerText));
-const me = parsed.find((e) => e.name === 'Tab Vacuum' || e.name === 'Tab Cleanup');
+const me = parsed.find((e) => e.name === 'Tab Vacuum');
 if (!me) throw new Error(`extension not loaded; saw ${parsed.map((e) => e.name)}`);
 console.log('extension id:', me.id, '| manifest name:', me.name);
 

@@ -542,7 +542,7 @@ function numberGroups(plan) {
 
 function needsPermission() {
   status.textContent =
-    'Tab Cleanup needs the "tabs" permission to read tab URLs. It looks like it was ' +
+    'Tab Vacuum needs the "tabs" permission to read tab URLs. It looks like it was ' +
     'revoked — re-enable it on the extension\'s Details page, then click Rescan.';
   actionBar.classList.add('hidden');
   groupsEl.replaceChildren();

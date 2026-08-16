@@ -1,4 +1,4 @@
-# Tab Cleanup
+# Tab Vacuum
 
 A Chromium extension that finds junk tabs across all your windows: new-tab pages you never used, browser-internal pages like Settings and Downloads, and groups of tabs pointing at the same page.
 
@@ -177,7 +177,7 @@ const ctx = await chromium.launchPersistentContext(THROWAWAY_PROFILE_DIR, {
 
 Two gotchas that cost real time:
 
-- **Find the extension id by name.** Read `chrome://extensions-internals/` and match on `name === 'Tab Cleanup'`. Do not take the first id in that dump — Edge ships built-in extensions that appear first, and you end up navigating to a page that does not exist.
+- **Find the extension id by name.** Read `chrome://extensions-internals/` and match on `name === 'Tab Vacuum'`. Do not take the first id in that dump — Edge ships built-in extensions that appear first, and you end up navigating to a page that does not exist.
 - **Pass `viewport: null`.** Otherwise Playwright pins a 1280×720 viewport and silently ignores `--window-size`.
 
 Two rules for any scripted run: a throw-away `--user-data-dir`, never your real profile, and never `taskkill` a browser process — close the context through Playwright's API.

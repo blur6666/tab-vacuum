@@ -1,5 +1,5 @@
 /**
- * Tab Cleanup popup.
+ * Tab Vacuum popup.
  *
  * Provides:
  * 1. "Scan my tabs" / "Scan again" -> Scans and shows breakdown, with link to Review page.
@@ -184,7 +184,7 @@ async function executeVacuum() {
 async function scan() {
   const tabs = await queryAllTabs();
   if (DEBUG_LOG_SCANNED_TABS) {
-    console.log(`Tab Cleanup: scanned ${tabs.length} tabs`, JSON.parse(JSON.stringify(tabs)));
+    console.log(`Tab Vacuum: scanned ${tabs.length} tabs`, JSON.parse(JSON.stringify(tabs)));
   }
   const plan = planCleanup(tabs);
   lastPlan = plan;
@@ -272,7 +272,7 @@ copyButton.addEventListener('click', async () => {
 
 function denied() {
   setStatus(
-    'Tab Cleanup needs the "tabs" permission to read tab URLs. Nothing else is accessed. ' +
+    'Tab Vacuum needs the "tabs" permission to read tab URLs. Nothing else is accessed. ' +
       'It looks like it was revoked — re-enable it on the extension\'s Details page.',
   );
 }

@@ -36,9 +36,6 @@ export function closableTabs(plan) {
   for (const tab of plan.systemTabs ?? []) {
     if (tab.closable) closable.set(tab.id, tab);
   }
-  for (const tab of plan.junkTabs ?? []) {
-    if (tab.closable) closable.set(tab.id, tab);
-  }
   for (const group of plan.duplicateGroups ?? []) {
     for (const tab of group.tabs) {
       if (tab.closable) closable.set(tab.id, tab);
@@ -62,9 +59,6 @@ export function bulkSelection(plan) {
   const ids = [];
 
   for (const tab of plan.unusedNewTabs ?? []) {
-    if (tab.closable) ids.push(tab.id);
-  }
-  for (const tab of plan.junkTabs ?? []) {
     if (tab.closable) ids.push(tab.id);
   }
   for (const group of plan.duplicateGroups ?? []) {
@@ -105,9 +99,6 @@ function protectionFor(plan, id) {
 
   const protectedSystemTab = (plan.protectedSystemTabs ?? []).find((tab) => tab.id === id);
   if (protectedSystemTab) return protectedSystemTab.reasons.join(', ');
-
-  const protectedJunkTab = (plan.protectedJunkTabs ?? []).find((tab) => tab.id === id);
-  if (protectedJunkTab) return protectedJunkTab.reasons.join(', ');
 
   for (const group of plan.duplicateGroups ?? []) {
     const tab = group.tabs.find((candidate) => candidate.id === id);
@@ -191,7 +182,6 @@ function urlsById(plan) {
 
   for (const tab of plan.unusedNewTabs ?? []) urls.set(tab.id, tab.url);
   for (const tab of plan.systemTabs ?? []) urls.set(tab.id, tab.url);
-  for (const tab of plan.junkTabs ?? []) urls.set(tab.id, tab.url);
   for (const group of plan.duplicateGroups ?? []) {
     for (const tab of group.tabs) urls.set(tab.id, tab.url);
   }

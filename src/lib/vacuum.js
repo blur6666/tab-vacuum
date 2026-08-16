@@ -1,137 +1,78 @@
 /**
- * Vacuum cleanup planner.
- * Scans tabs and computes all closable junk and duplicate non-keeper tabs using
- * broader junk detection rules.
+ * What the Vacuum button closes.
  *
- * Pure — does not touch the chrome global.
+ * This is a *selection* over the ordinary scan, not a second scan with its own
+ * rules. `planCleanup()` already classifies every tab and computes every
+ * protection; re-deriving any of that here would mean two copies of the same
+ * ladder drifting apart, and the copy used by the one-click button is the worst
+ * one to get wrong.
+ *
+ * Vacuum takes three things:
+ *
+ *   - unused new tabs
+ *   - system tabs (Settings, Downloads, History, ...)
+ *   - every duplicate except the one copy each group keeps
+ *
+ * which is Kill 'Em All plus system tabs. Only `closable` tabs are ever
+ * included, so protections and the keeper rule hold exactly as they do on the
+ * review page.
+ *
+ * Pure — does not touch the `chrome` global.
  */
 
-import { detectJunk, isBlockedByPrivacy } from './junk-rules.js';
-import { normalizeUrl } from './url.js';
-import {
-  PROTECT,
-  NEVER_CLOSE,
-  DEDUPE_WITHIN_TAB_GROUPS,
-  INCLUDE_INCOGNITO,
-} from './config.js';
-import {
-  MissingTabsPermissionError,
-  TAB_GROUP_ID_NONE,
-  closeBlockers,
-  summarize,
-  buildGroup,
-  tabGroupId,
-} from './scan.js';
+import { planCleanup } from './scan.js';
 
-export function planVacuum(tabs, { selfTabId = null, blocklist = [] } = {}) {
-  const all = Array.isArray(tabs) ? tabs : [];
+/**
+ * @param {Array<object>} tabs   chrome.tabs.Tab-shaped objects
+ * @param {{selfTabId?: number|null}} options
+ * @returns {{totals: object, closableIds: number[], totalClosable: number, plan: object}}
+ */
+export function planVacuum(tabs, { selfTabId = null } = {}) {
+  // Throws MissingTabsPermissionError when urls are redacted, same as any
+  // other scan. Never soften that — see CLAUDE.md.
+  const plan = planCleanup(tabs, { selfTabId });
 
-  for (const tab of all) {
-    if (tab.url === undefined && tab.pendingUrl === undefined) {
-      throw new MissingTabsPermissionError();
-    }
-  }
-
-  let skippedIncognito = 0;
-  const considered = all.filter((tab) => {
-    if (tab.incognito && !INCLUDE_INCOGNITO) {
-      skippedIncognito += 1;
-      return false;
-    }
-    if (tab.windowType !== undefined && tab.windowType !== 'normal') return false;
-    return true;
-  });
-
-  const tabsPerWindow = new Map();
-  for (const tab of considered) {
-    tabsPerWindow.set(tab.windowId, (tabsPerWindow.get(tab.windowId) ?? 0) + 1);
-  }
-
-  const junkTabs = [];
-  const protectedJunkTabs = [];
-  const groupsByKey = new Map();
-  const otherTabs = [];
-
-  for (const tab of considered) {
-    const junkType = detectJunk(tab);
-    if (junkType) {
-      const reasons = [];
-      if (selfTabId !== null && tab.id === selfTabId) reasons.push('extension page');
-      if (PROTECT.pinned && tab.pinned) reasons.push('pinned');
-      if (PROTECT.audible && tab.audible) reasons.push('audible');
-      if (PROTECT.grouped && tabGroupId(tab) !== TAB_GROUP_ID_NONE) reasons.push('grouped');
-      if (PROTECT.soleTabInWindow && tabsPerWindow.get(tab.windowId) === 1) {
-        reasons.push('only tab in window');
-      }
-      if (isBlockedByPrivacy(tab.url, blocklist)) {
-        reasons.push('privacy blocklist');
-      }
-
-      if (reasons.length > 0) {
-        protectedJunkTabs.push({ ...summarize(tab), junkType, reasons, closable: false });
-      } else {
-        junkTabs.push({ ...summarize(tab), junkType, closable: true });
-      }
-      continue;
-    }
-
-    const key = normalizeUrl(tab.url);
-    if (key === null) {
-      otherTabs.push({ ...summarize(tab), reason: 'not scanned for duplicates', closable: false });
-      continue;
-    }
-
-    const groupId = tabGroupId(tab);
-    const bucket = DEDUPE_WITHIN_TAB_GROUPS ? `${key}\n${groupId}` : key;
-    if (!groupsByKey.has(bucket)) groupsByKey.set(bucket, { key, groupId, tabs: [] });
-    groupsByKey.get(bucket).tabs.push(tab);
-  }
-
-  const buckets = [...groupsByKey.values()];
-  for (const { tabs: members } of buckets) {
-    if (members.length < 2) {
-      otherTabs.push({ ...summarize(members[0]), reason: 'only copy', closable: false });
-    }
-  }
-
-  const duplicateGroups = buckets
-    .filter((bucket) => bucket.tabs.length >= 2)
-    .map((bucket) => buildGroup(bucket, tabsPerWindow));
-
-  const closableIds = [];
-  for (const tab of junkTabs) {
-    if (tab.closable) closableIds.push(tab.id);
-  }
-  for (const group of duplicateGroups) {
-    for (const tab of group.tabs) {
-      if (tab.closable && !tab.isKeeper) closableIds.push(tab.id);
-    }
-  }
-
-  const plan = {
-    totals: {
-      windows: new Set(considered.map((tab) => tab.windowId)).size,
-      tabs: all.length,
-      considered: considered.length,
-      skippedIncognito,
-    },
-    unusedNewTabs: [],
-    protectedTabs: [],
-    systemTabs: [],
-    protectedSystemTabs: [],
-    junkTabs,
-    protectedJunkTabs,
-    duplicateGroups,
-    otherTabs,
-  };
+  const closableIds = [
+    ...plan.unusedNewTabs.filter((tab) => tab.closable).map((tab) => tab.id),
+    ...plan.systemTabs.filter((tab) => tab.closable).map((tab) => tab.id),
+    ...plan.duplicateGroups.flatMap((group) =>
+      group.tabs.filter((tab) => tab.closable && !tab.isKeeper).map((tab) => tab.id),
+    ),
+  ];
 
   return {
     totals: plan.totals,
-    junkTabs,
-    protectedJunkTabs,
-    duplicateGroups,
     closableIds,
     totalClosable: closableIds.length,
+    // The full plan, so closeTabs() can re-validate every id against it.
     plan,
   };
+}
+
+/**
+ * A one-line-per-tab summary of what Vacuum is about to close, so the confirm
+ * can name the tabs instead of only counting them. Grouped by why.
+ *
+ * @returns {Array<{id: number, url: string, title: string, why: string}>}
+ */
+export function vacuumPreview(plan) {
+  const rows = [];
+
+  for (const tab of plan.unusedNewTabs) {
+    if (tab.closable) rows.push({ ...row(tab), why: 'unused new tab' });
+  }
+  for (const tab of plan.systemTabs) {
+    if (tab.closable) rows.push({ ...row(tab), why: 'system tab' });
+  }
+  for (const group of plan.duplicateGroups) {
+    for (const tab of group.tabs) {
+      if (tab.closable && !tab.isKeeper) rows.push({ ...row(tab), why: 'duplicate' });
+    }
+  }
+
+  return rows;
+}
+
+function row(tab) {
+  return { id: tab.id, url: tab.url, title: tab.title };
 }

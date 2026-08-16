@@ -17,7 +17,8 @@
  */
 
 import { closeTabsById, queryAllTabs } from './chrome-tabs.js';
-import { closeBlockers } from './scan.js';
+import { closeBlockers, protectionReasons } from './scan.js';
+import { isNewTabUrl } from './url.js';
 
 /**
  * Every tab the UI may offer a checkbox for, keyed by id.
@@ -130,14 +131,31 @@ export async function closeTabs(plan, ids, options = {}) {
   const { close, refused } = selectClosable(plan, ids);
   if (close.length === 0) return { closed: 0, closedIds: [], skipped: refused };
 
-  const live = new Map((await snapshot()).map((tab) => [tab.id, tab]));
+  const liveList = await snapshot();
+  const live = new Map(liveList.map((tab) => [tab.id, tab]));
+  const liveTabsPerWindow = new Map();
+  for (const tab of liveList) {
+    liveTabsPerWindow.set(tab.windowId, (liveTabsPerWindow.get(tab.windowId) ?? 0) + 1);
+  }
+
   const plannedUrls = urlsById(plan);
+  const duplicateIds = new Set(
+    (plan.duplicateGroups ?? []).flatMap((group) => group.tabs.map((tab) => tab.id)),
+  );
 
   const confirmed = [];
   const skipped = [...refused];
 
   for (const id of close) {
-    const reason = staleReason(live.get(id), plannedUrls.get(id), id, selfTabId);
+    const isDuplicate = duplicateIds.has(id);
+    const reason = staleReason(
+      live.get(id),
+      plannedUrls.get(id),
+      id,
+      selfTabId,
+      isDuplicate,
+      liveTabsPerWindow,
+    );
     if (reason) skipped.push({ id, reason });
     else confirmed.push(id);
   }
@@ -149,13 +167,21 @@ export async function closeTabs(plan, ids, options = {}) {
 }
 
 /** Why this tab must not be closed after all, or null if it is still fair game. */
-function staleReason(tab, plannedUrl, id, selfTabId) {
+function staleReason(tab, plannedUrl, id, selfTabId, isDuplicate = false, tabsPerWindow = new Map()) {
   if (tab === undefined) return 'already gone';
   if (id === selfTabId) return 'this page';
   if ((tab.url ?? '') !== plannedUrl) return 'navigated since the scan';
+  if (tab.pendingUrl !== undefined && tab.pendingUrl !== '' && !isNewTabUrl(tab.pendingUrl)) {
+    return 'navigating since the scan';
+  }
 
-  const blockers = closeBlockers(tab);
-  if (blockers.length > 0) return `now ${blockers.join(', ')}`;
+  if (isDuplicate) {
+    const blockers = closeBlockers(tab);
+    if (blockers.length > 0) return `now ${blockers.join(', ')}`;
+  } else {
+    const reasons = protectionReasons(tab, tabsPerWindow, selfTabId);
+    if (reasons.length > 0) return `now ${reasons.join(', ')}`;
+  }
 
   return null;
 }

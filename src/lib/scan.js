@@ -160,7 +160,7 @@ function isNewTabish(tab) {
   return true;
 }
 
-function protectionReasons(tab, tabsPerWindow, selfTabId) {
+export function protectionReasons(tab, tabsPerWindow, selfTabId) {
   const reasons = [];
   if (selfTabId !== null && tab.id === selfTabId) reasons.push('extension page');
   if (PROTECT.pinned && tab.pinned) reasons.push('pinned');

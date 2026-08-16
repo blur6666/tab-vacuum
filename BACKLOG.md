@@ -1,3 +1,5 @@
+_Frozen record. Completed work is kept below for history; open work is tracked with Backlog.md — run `backlog task list` or `backlog board`._
+
 - [DONE] Show ALL tabs on the report. Add a filter to choose only the ones subject for deletion. Leave this filter ON as default
 
 - [DONE] Add the number (id?) of the group for each tab so I can see that in the table (if you also have color or name, put that in a column too)
@@ -8,14 +10,4 @@
 
 - [DONE] Lets remove the closing protection for new-tabs that are "active" it makes no sense.
 
-- [TECH VIABLE?] Can we read the data of when was the tab  opened and when was it last accessed? Im thinking in some way to kill forgotten or "hoarded" tabs
-
 - [DONE] Nothing runs `npm test` automatically. No CI, no pre-commit hook. `test/guards.test.js` is described in CLAUDE.md as a structural guarantee — only `chrome-tabs.js` may close a tab, the manifest may not grow past `tabs` + optional `tabGroups` — but today that guarantee is only "somebody remembered to run the tests". A push or PR that adds a second close path, a host permission or a content script goes green on GitHub, because GitHub runs nothing. The gap is in the process, not the code: the guards work, they just are not wired to anything. Fix: a GitHub Actions workflow running `npm test` on every push and pull request, on the oldest Node the guard tests actually support and on current. — `.github/workflows/test.yml`, added 2026-08-16.
-
-- [TODO] **Plan the full CI.** `.github/workflows/test.yml` runs `npm test` on push and PR, which closes the "nothing runs the guards" gap and nothing more. It is a signal, not a gate, and it only covers the pure functions. Produce a plan — not an implementation — that decides the following, in roughly this order of value:
-  - **Make CI a gate.** Nothing is required today, so a red run blocks no merge. Decide whether `main` gets branch protection requiring the `test` check, and whether that is worth the friction on a personal repo where the owner is the only merger.
-  - **Cover the UI.** All 70 tests are pure-function tests over plain objects; `popup.js` and `review.js` have zero automated coverage. That is not a small gap — findings 3 and 4 of `CODE-REVIEW.md` were both UI-layer bugs that the unit suite passed straight through, and finding 3 broke an invariant that `test/execute.test.js` asserts and still holds. Decide whether Playwright drives the real extension in CI (README documents the recipe; `--load-extension` works on Chromium builds, headless included) or whether the UI stays hand-tested.
-  - **Resolve the dependency tension first, because it constrains everything above.** The repo has no runtime dependencies, no devDependencies, no lockfile and no build step, and CI has no install step as a direct result. Playwright, ESLint, Prettier and `web-ext lint` each break that. Decide whether the zero-dependency rule is a hard architectural constraint or a default that CI-only tooling may be exempt from — and if the latter, whether they are `devDependencies` with a lockfile, or `npx` invocations pinned by version.
-  - **Fix packaging so CI can verify it.** `npm run package` is Windows-only (finding 5), so no automated run can produce or check a store zip. A cross-platform packaging step would close the finding and let CI assert the zip contains exactly `manifest.json`, the icons and `src/` — the thing most likely to break silently before a store submission.
-  - **Decide what else earns its place**, and reject the rest explicitly rather than accumulating jobs: `node --check` syntax linting (free, no dependency), `--experimental-test-coverage`, CodeQL, Dependabot, pinning actions by SHA rather than tag, and a markdown check for the no-hard-wrap rule in CLAUDE.md.
-  - **State what CI deliberately will not do.** The false-positive audit is human by decision (README, "Worth checking yourself") — a plan that quietly implies automation covers it is worse than one that says it does not.

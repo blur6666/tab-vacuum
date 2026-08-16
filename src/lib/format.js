@@ -48,7 +48,7 @@ export function prettyUrl(url, maxLength = 72) {
 export function planToMarkdown(plan) {
   const lines = [];
 
-  lines.push('# Tab Cleanup report');
+  lines.push('# Tab Vacuum report');
   lines.push('');
   lines.push(`- Windows: ${plan.totals.windows}`);
   lines.push(

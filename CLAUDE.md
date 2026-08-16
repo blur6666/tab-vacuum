@@ -1,4 +1,4 @@
-# Tab Cleanup — project rules
+# Tab Vacuum — project rules
 
 ## Purpose
 

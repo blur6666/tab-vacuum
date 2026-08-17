@@ -35,6 +35,12 @@ let tabGroups = new Map();
 /** Tab ids the user has ticked. Survives a re-render, cleared after a close. */
 const selected = new Set();
 
+/**
+ * What an armed Kill 'Em All offered to close. The tabs it actually closes
+ * are these narrowed to the ones still ticked when the second click lands.
+ */
+let killIds = null;
+
 /* ------------------------------------------------------------------ scan */
 
 /**
@@ -72,6 +78,7 @@ async function load() {
 function render(plan) {
   status.textContent = '';
   disarmAll();
+  killIds = null;
 
   const duplicateTabs = plan.duplicateGroups.reduce((sum, group) => sum + group.count, 0);
   const systemTabs = plan.systemTabs ?? [];
@@ -312,6 +319,15 @@ function updateSelectionUi() {
   closeSelected.disabled = count === 0;
 
   if (count === 0) disarm(closeSelected);
+
+  // An armed Kill 'Em All fires on whatever is still ticked, so its count and
+  // window-closer tally have to follow an untick down — otherwise the button
+  // promises more than it will take. Unticking the last one disarms it.
+  if (armed.has(killEmAll)) {
+    const live = (killIds ?? []).filter((id) => selected.has(id));
+    if (live.length === 0) disarm(killEmAll);
+    else killEmAll.textContent = killPrompt(live.length, windowClosersIn(lastPlan, live));
+  }
 }
 
 for (const button of document.querySelectorAll('.select-all')) {
@@ -385,18 +401,31 @@ closeSelected.addEventListener('click', () => {
 killEmAll.addEventListener('click', () => {
   if (!lastPlan) return;
 
-  // Tick everything it would take, so the second click confirms a selection
-  // the user can actually see.
-  const ids = bulkSelection(lastPlan);
-  if (ids.length === 0) return;
+  // Only the first click proposes — it ticks everything it would take, so the
+  // second click confirms a selection the user can actually see. Re-ticking on
+  // the confirming click would silently undo an untick made in between.
+  if (!armed.has(killEmAll)) {
+    killIds = bulkSelection(lastPlan);
+    if (killIds.length === 0) return;
 
-  for (const id of ids) selected.add(id);
-  syncCheckboxes();
-  updateSelectionUi();
+    for (const id of killIds) selected.add(id);
+    syncCheckboxes();
+    updateSelectionUi();
+  }
+
+  // Captured per click: `arm()` disarms before firing, and disarming clears
+  // `killIds` on the next render.
+  const offered = killIds ?? [];
+  const live = offered.filter((id) => selected.has(id));
+  if (live.length === 0) return;
 
   // Says when some of those rows take their window with them. Each row already
   // warns, but they can be scrolled off screen by the time you confirm.
-  arm(killEmAll, killPrompt(ids.length, windowClosersIn(lastPlan, ids)), () => run(ids));
+  arm(killEmAll, killPrompt(live.length, windowClosersIn(lastPlan, live)), () => {
+    // Re-read at fire time: this is the selection the second click confirms.
+    const confirmed = offered.filter((id) => selected.has(id));
+    if (confirmed.length > 0) run(confirmed);
+  });
 });
 
 async function run(ids) {

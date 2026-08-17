@@ -10,6 +10,25 @@
     <main>
       <header>
         <h1>Tab Vacuum</h1>
+        <div class="help-container">
+          <button
+            id="help-btn"
+            class="help-btn"
+            type="button"
+            aria-label="Quick guide"
+            title="Quick guide"
+            aria-expanded="false"
+          >
+            ?
+          </button>
+          <div id="help-popover" class="help-popover" role="tooltip" aria-hidden="true">
+            <span class="help-title">Quick guide</span>
+            <ul class="help-list">
+              <li><strong>Scan my tabs:</strong> Inspect &amp; review duplicates, junk, and system tabs — closes nothing on its own.</li>
+              <li><strong>Vacuum 'em all!:</strong> Instant 2-click cleanup, listing every tab it will close before you confirm.</li>
+            </ul>
+          </div>
+        </div>
       </header>
 
       <div id="scan-slot">

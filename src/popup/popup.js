@@ -21,6 +21,10 @@ const SCAN = 'Scan my tabs';
 const SCAN_AGAIN = '⟳ Scan again';
 const VACUUM = "Vacuum 'em all!";
 
+const SCAN_TOOLTIP = 'Inspect and review duplicate, junk, and system tabs — closes nothing on its own';
+const SCAN_AGAIN_TOOLTIP = 'Re-scan all tabs and refresh the report in place';
+const VACUUM_TOOLTIP = "Instant 2-click cleanup: scans and closes duplicate and junk tabs across all windows, listing every tab before you confirm";
+
 const scanButton = $('scan');
 const vacuumButton = $('vacuum');
 const vacuumList = $('vacuum-list');
@@ -30,13 +34,40 @@ const toggleProtected = $('toggle-protected');
 const protectedList = $('protected-list');
 const openReview = $('open-review');
 const copyButton = $('copy');
+const helpBtn = $('help-btn');
 
 let lastPlan = null;
 let vacuumPlan = null;
 let armedVacuumTimer = null;
 
 scanButton.textContent = SCAN;
+scanButton.title = SCAN_TOOLTIP;
+scanButton.setAttribute('aria-label', `Scan my tabs: ${SCAN_TOOLTIP.toLowerCase()}`);
+
 vacuumButton.textContent = VACUUM;
+vacuumButton.title = VACUUM_TOOLTIP;
+vacuumButton.setAttribute('aria-label', `Vacuum 'em all: ${VACUUM_TOOLTIP.toLowerCase()}`);
+
+// The popover is hover-only by default (:hover/:focus-within in CSS); these
+// keep aria-expanded honest for anyone using a screen reader, which does not
+// otherwise learn that hovering revealed content.
+helpBtn?.addEventListener('mouseenter', () => {
+  helpBtn.setAttribute('aria-expanded', 'true');
+});
+
+helpBtn?.addEventListener('mouseleave', () => {
+  if (document.activeElement !== helpBtn) {
+    helpBtn.setAttribute('aria-expanded', 'false');
+  }
+});
+
+helpBtn?.addEventListener('focus', () => {
+  helpBtn.setAttribute('aria-expanded', 'true');
+});
+
+helpBtn?.addEventListener('blur', () => {
+  helpBtn.setAttribute('aria-expanded', 'false');
+});
 
 // Initial disabled state, from the same fresh count every other path uses.
 hasTabsPermission().then(async (granted) => {
@@ -122,6 +153,8 @@ function armVacuum(result) {
 
   const count = result.totalClosable;
   vacuumButton.textContent = `Closing ${count} tab${count === 1 ? '' : 's'}, ok?`;
+  vacuumButton.title = `Click again to confirm closing ${count} tab${count === 1 ? '' : 's'}`;
+  vacuumButton.setAttribute('aria-label', `Confirm vacuum: close ${count} tab${count === 1 ? '' : 's'} now`);
   vacuumButton.classList.add('armed');
 
   vacuumList.replaceChildren(
@@ -146,6 +179,8 @@ function disarmVacuum() {
     armedVacuumTimer = null;
   }
   vacuumButton.textContent = VACUUM;
+  vacuumButton.title = VACUUM_TOOLTIP;
+  vacuumButton.setAttribute('aria-label', `Vacuum 'em all: ${VACUUM_TOOLTIP.toLowerCase()}`);
   vacuumButton.classList.remove('armed');
   vacuumList.replaceChildren();
   vacuumList.classList.add('hidden');
@@ -202,6 +237,8 @@ function render(plan) {
   results.classList.toggle('hidden', false);
 
   scanButton.textContent = SCAN_AGAIN;
+  scanButton.title = SCAN_AGAIN_TOOLTIP;
+  scanButton.setAttribute('aria-label', `Scan again: ${SCAN_AGAIN_TOOLTIP.toLowerCase()}`);
   scanButton.className = 'secondary';
 
   $('totals').textContent =

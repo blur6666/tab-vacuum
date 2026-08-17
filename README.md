@@ -16,7 +16,7 @@ That warning is broader than what the extension does, and the naming is genuinel
 
 ## Packaging for the Chrome Web Store
 
-`npm run package` writes `tab-vacuum-<version>.zip` at the repo root, containing only `manifest.json`, the icons, and `src/` — no `test/`, no `.md` files, no `package.json`, no `tmp/`, no dotfiles. It stages those files in `tmp/package` (deleted afterward) and zips with PowerShell's `Compress-Archive`, since neither `zip` nor `tar` ships with Git Bash on Windows and this repo takes on no npm dependencies to get one. `*.zip` is gitignored, so the output never gets committed.
+`npm run package` writes `tab-vacuum-<version>.zip` at the repo root, containing only `manifest.json`, the icons, and `src/` — no `test/`, no `.md` files, no `package.json`, no `tmp/`, no dotfiles. It stages those files in `tmp/package` (deleted afterward) and zips them with a small, dependency-free ZIP writer in `scripts/package.js` — stored entries, not deflated, which keeps it a few dozen lines instead of vendoring a compression library — so it runs the same on Windows, Linux and macOS, including CI. `*.zip` is gitignored, so the output never gets committed.
 
 ## Using the extension
 

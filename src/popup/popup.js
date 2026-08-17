@@ -21,6 +21,12 @@ const SCAN = 'Scan my tabs';
 const SCAN_AGAIN = '⟳ Scan again';
 const VACUUM = "Vacuum 'em all!";
 
+const SCAN_TOOLTIP = 'Inspect and review duplicate, junk, and system tabs safely without closing anything';
+const SCAN_AGAIN_TOOLTIP = 'Re-scan all tabs and refresh the report in place';
+const VACUUM_TOOLTIP = "Instant 2-click cleanup: scans and closes duplicate and junk tabs across all windows with confirmation";
+
+const ONBOARDING_DISMISSED_KEY = 'tab_vacuum_onboarding_dismissed';
+
 const scanButton = $('scan');
 const vacuumButton = $('vacuum');
 const status = $('status');
@@ -29,13 +35,31 @@ const toggleProtected = $('toggle-protected');
 const protectedList = $('protected-list');
 const openReview = $('open-review');
 const copyButton = $('copy');
+const onboarding = $('onboarding');
+const dismissOnboarding = $('dismiss-onboarding');
 
 let lastPlan = null;
 let vacuumPlan = null;
 let armedVacuumTimer = null;
 
 scanButton.textContent = SCAN;
+scanButton.title = SCAN_TOOLTIP;
+scanButton.setAttribute('aria-label', `Scan my tabs: ${SCAN_TOOLTIP.toLowerCase()}`);
+
 vacuumButton.textContent = VACUUM;
+vacuumButton.title = VACUUM_TOOLTIP;
+vacuumButton.setAttribute('aria-label', `Vacuum 'em all: ${VACUUM_TOOLTIP.toLowerCase()}`);
+
+if (onboarding && localStorage.getItem(ONBOARDING_DISMISSED_KEY) !== 'true') {
+  onboarding.classList.remove('hidden');
+}
+
+dismissOnboarding?.addEventListener('click', () => {
+  try {
+    localStorage.setItem(ONBOARDING_DISMISSED_KEY, 'true');
+  } catch {}
+  onboarding?.classList.add('hidden');
+});
 
 // Check initially if there are any vacuum candidates to set initial disabled state
 hasTabsPermission().then(async (granted) => {
@@ -115,7 +139,10 @@ function armVacuum(count) {
     armedVacuumTimer = null;
   }
   setStatus('');
-  vacuumButton.textContent = `Closing ${count} tab${count === 1 ? '' : 's'}, ok?`;
+  const label = `Closing ${count} tab${count === 1 ? '' : 's'}, ok?`;
+  vacuumButton.textContent = label;
+  vacuumButton.title = `Click again to confirm closing ${count} tab${count === 1 ? '' : 's'}`;
+  vacuumButton.setAttribute('aria-label', `Confirm vacuum: close ${count} tab${count === 1 ? '' : 's'} now`);
   vacuumButton.classList.add('armed');
   armedVacuumTimer = setTimeout(() => {
     disarmVacuum();
@@ -128,6 +155,8 @@ function disarmVacuum() {
     armedVacuumTimer = null;
   }
   vacuumButton.textContent = VACUUM;
+  vacuumButton.title = VACUUM_TOOLTIP;
+  vacuumButton.setAttribute('aria-label', `Vacuum 'em all: ${VACUUM_TOOLTIP.toLowerCase()}`);
   vacuumButton.classList.remove('armed');
   vacuumPlan = null;
   setStatus('');
@@ -176,6 +205,8 @@ function render(plan) {
   results.classList.toggle('hidden', false);
 
   scanButton.textContent = SCAN_AGAIN;
+  scanButton.title = SCAN_AGAIN_TOOLTIP;
+  scanButton.setAttribute('aria-label', `Scan again: ${SCAN_AGAIN_TOOLTIP.toLowerCase()}`);
   scanButton.className = 'secondary';
 
   $('totals').textContent =

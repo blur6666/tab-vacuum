@@ -13,12 +13,37 @@
         <h1>Tab Cleanup</h1>
       </header>
 
-      <div id="scan-slot">
-        <button id="scan" class="primary" type="button">Scan my tabs</button>
+      <section id="onboarding" class="onboarding hidden" aria-label="First-time guidance">
+        <div class="onboarding-header">
+          <span class="onboarding-badge">Quick guide</span>
+          <button id="dismiss-onboarding" class="link-muted dismiss-btn" type="button" aria-label="Dismiss first-time guide" title="Dismiss this guide">✕ Dismiss</button>
+        </div>
+        <ul class="onboarding-list">
+          <li><strong>Scan my tabs:</strong> Inspect and safely review duplicates &amp; junk without closing anything.</li>
+          <li><strong>Vacuum 'em all!:</strong> Instant 2-click cleanup for all safe duplicates &amp; junk across windows.</li>
+        </ul>
+      </section>
+
+      <div class="action-slot">
+        <button
+          id="scan"
+          class="primary"
+          type="button"
+          title="Inspect and review duplicate, junk, and system tabs safely without closing anything"
+          aria-label="Scan my tabs: inspect and review duplicates and junk tabs without closing"
+        >
+          Scan my tabs
+        </button>
       </div>
 
-      <div id="scan-slot">
-        <button id="vacuum" class="danger-solid" type="button" alt="Close all duplicates, abandoned 'new tabs', and other pages'">
+      <div class="action-slot">
+        <button
+          id="vacuum"
+          class="danger-solid"
+          type="button"
+          title="Instant 2-click cleanup: scans and closes duplicate and junk tabs across all windows with confirmation"
+          aria-label="Vacuum 'em all: instant two-click cleanup for duplicates and junk tabs"
+        >
           Vacuum 'em all!
         </button>
       </div> 

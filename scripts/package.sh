@@ -11,9 +11,9 @@ OUT="tab-vacuum-$VERSION.zip"
 STAGE="tmp/package"
 
 rm -rf "$STAGE"
-mkdir -p "$STAGE"
-
-cp manifest.json assets/icons/icon16.png assets/icons/icon32.png assets/icons/icon48.png assets/icons/icon128.png "$STAGE/"
+mkdir -p "$STAGE/assets/icons"
+cp manifest.json "$STAGE/"
+cp assets/icons/icon16.png assets/icons/icon32.png assets/icons/icon48.png assets/icons/icon128.png "$STAGE/assets/icons/"
 cp -r src "$STAGE/src"
 
 rm -f "$OUT"

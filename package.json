@@ -6,6 +6,6 @@
   "description": "Brave extension that finds and vacuums away duplicate tabs, unused new tabs, and other junk.",
   "scripts": {
     "test": "node --test",
-    "package": "bash scripts/package.sh"
+    "package": "node scripts/package.js"
   }
 }

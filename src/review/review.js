@@ -43,6 +43,12 @@ let tabGroups = new Map();
 /** Tab ids the user has ticked. Survives a re-render, cleared after a close. */
 const selected = new Set();
 
+/**
+ * What an armed Vacuum 'em all! offered to close. The tabs it actually closes
+ * are these narrowed to the ones still ticked when the second click lands.
+ */
+let vacuumIds = null;
+
 /* ------------------------------------------------------------------ scan */
 
 /**
@@ -80,6 +86,7 @@ async function load() {
 function render(plan) {
   status.textContent = '';
   disarmAll();
+  vacuumIds = null;
 
   const duplicateTabs = plan.duplicateGroups.reduce((sum, group) => sum + group.count, 0);
   const newTabs = (plan.junkTabs ?? []).filter((tab) => tab.junkType === 'new_tab');
@@ -330,6 +337,15 @@ function updateSelectionUi() {
   closeSelected.disabled = count === 0;
 
   if (count === 0) disarm(closeSelected);
+
+  // An armed Vacuum 'em all! fires on whatever is still ticked, so its count
+  // has to follow an untick down — otherwise the button promises more than it
+  // will take. Unticking the last one disarms it outright.
+  if (armed.has(vacuumEmAll)) {
+    const live = (vacuumIds ?? []).filter((id) => selected.has(id));
+    if (live.length === 0) disarm(vacuumEmAll);
+    else vacuumEmAll.textContent = confirmVacuumLabel(live.length);
+  }
 }
 
 for (const button of document.querySelectorAll('.select-all')) {
@@ -404,19 +420,36 @@ closeSelected.addEventListener('click', () => {
   arm(closeSelected, `Close ${selected.size}? — click again`, () => run([...selected]));
 });
 
+function confirmVacuumLabel(count) {
+  return `Closing ${count}? — click again`;
+}
+
 vacuumEmAll.addEventListener('click', () => {
   if (!lastPlan) return;
 
-  // Tick everything it would take, so the second click confirms a selection
-  // the user can actually see.
-  const ids = bulkSelection(lastPlan);
-  if (ids.length === 0) return;
+  // Only the first click proposes — it ticks everything it would take, so the
+  // second click confirms a selection the user can actually see. Re-ticking on
+  // the confirming click would silently undo an untick made in between.
+  if (!armed.has(vacuumEmAll)) {
+    vacuumIds = bulkSelection(lastPlan);
+    if (vacuumIds.length === 0) return;
 
-  for (const id of ids) selected.add(id);
-  syncCheckboxes();
-  updateSelectionUi();
+    for (const id of vacuumIds) selected.add(id);
+    syncCheckboxes();
+    updateSelectionUi();
+  }
 
-  arm(vacuumEmAll, `Closing ${ids.length}? — click again`, () => run(ids));
+  // Captured per click: `arm()` disarms before firing, and disarming clears
+  // `vacuumIds` on the next render.
+  const offered = vacuumIds ?? [];
+  const live = offered.filter((id) => selected.has(id));
+  if (live.length === 0) return;
+
+  arm(vacuumEmAll, confirmVacuumLabel(live.length), () => {
+    // Re-read at fire time: this is the selection the second click confirms.
+    const confirmed = offered.filter((id) => selected.has(id));
+    if (confirmed.length > 0) run(confirmed);
+  });
 });
 
 async function run(ids) {

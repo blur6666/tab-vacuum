@@ -65,15 +65,11 @@ helpBtn?.addEventListener('blur', () => {
   helpBtn.setAttribute('aria-expanded', 'false');
 });
 
-// Check initially if there are any vacuum candidates to set initial disabled state
+// Initial disabled state, from the same fresh count every other path uses.
 hasTabsPermission().then(async (granted) => {
   if (!granted) return;
   try {
-    const tabs = await queryAllTabs();
-    const result = planVacuum(tabs);
-    if (result.totalClosable === 0) {
-      vacuumButton.disabled = true;
-    }
+    await refreshVacuumState();
   } catch {}
 });
 
@@ -178,16 +174,22 @@ async function executeVacuum() {
     await closeTabs(currentVacuum.plan, currentVacuum.closableIds);
     setStatus('');
 
-    if (!results.classList.contains('hidden')) {
-      await scan();
-    }
+    // Never assume the vacuum emptied the profile — revalidation can skip
+    // tabs, so the button's state comes from a fresh count either way.
+    if (results.classList.contains('hidden')) await refreshVacuumState();
+    else await scan();
   } catch (error) {
     showError(error);
     vacuumButton.disabled = false;
   } finally {
     scanButton.disabled = false;
-    vacuumButton.disabled = true;
   }
+}
+
+/** Vacuum 'em all! is enabled iff a fresh scan still finds something to close. */
+async function refreshVacuumState() {
+  const tabs = await queryAllTabs();
+  vacuumButton.disabled = planVacuum(tabs).totalClosable === 0;
 }
 
 async function scan() {

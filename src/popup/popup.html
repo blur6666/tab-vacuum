@@ -11,18 +11,26 @@
       <header>
         <!-- <img id="ext-icon" src="../../assets/icons/icon-outline.png" /> -->
         <h1>Tab Cleanup</h1>
-      </header>
-
-      <section id="onboarding" class="onboarding hidden" aria-label="First-time guidance">
-        <div class="onboarding-header">
-          <span class="onboarding-badge">Quick guide</span>
-          <button id="dismiss-onboarding" class="link-muted dismiss-btn" type="button" aria-label="Dismiss first-time guide" title="Dismiss this guide">✕ Dismiss</button>
+        <div class="help-container">
+          <button
+            id="help-btn"
+            class="help-btn"
+            type="button"
+            aria-label="Quick guide"
+            title="Quick guide"
+            aria-expanded="false"
+          >
+            ?
+          </button>
+          <div id="help-popover" class="help-popover" role="tooltip" aria-hidden="true">
+            <span class="help-title">Quick guide</span>
+            <ul class="help-list">
+              <li><strong>Scan my tabs:</strong> Inspect &amp; review duplicates, junk, and system tabs safely without closing anything.</li>
+              <li><strong>Vacuum 'em all!:</strong> Instant 2-click cleanup across all windows with safety confirmations.</li>
+            </ul>
+          </div>
         </div>
-        <ul class="onboarding-list">
-          <li><strong>Scan my tabs:</strong> Inspect and safely review duplicates &amp; junk without closing anything.</li>
-          <li><strong>Vacuum 'em all!:</strong> Instant 2-click cleanup for all safe duplicates &amp; junk across windows.</li>
-        </ul>
-      </section>
+      </header>
 
       <div class="action-slot">
         <button

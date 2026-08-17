@@ -25,8 +25,6 @@ const SCAN_TOOLTIP = 'Inspect and review duplicate, junk, and system tabs safely
 const SCAN_AGAIN_TOOLTIP = 'Re-scan all tabs and refresh the report in place';
 const VACUUM_TOOLTIP = "Instant 2-click cleanup: scans and closes duplicate and junk tabs across all windows with confirmation";
 
-const ONBOARDING_DISMISSED_KEY = 'tab_vacuum_onboarding_dismissed';
-
 const scanButton = $('scan');
 const vacuumButton = $('vacuum');
 const status = $('status');
@@ -35,8 +33,7 @@ const toggleProtected = $('toggle-protected');
 const protectedList = $('protected-list');
 const openReview = $('open-review');
 const copyButton = $('copy');
-const onboarding = $('onboarding');
-const dismissOnboarding = $('dismiss-onboarding');
+const helpBtn = $('help-btn');
 
 let lastPlan = null;
 let vacuumPlan = null;
@@ -50,15 +47,22 @@ vacuumButton.textContent = VACUUM;
 vacuumButton.title = VACUUM_TOOLTIP;
 vacuumButton.setAttribute('aria-label', `Vacuum 'em all: ${VACUUM_TOOLTIP.toLowerCase()}`);
 
-if (onboarding && localStorage.getItem(ONBOARDING_DISMISSED_KEY) !== 'true') {
-  onboarding.classList.remove('hidden');
-}
+helpBtn?.addEventListener('mouseenter', () => {
+  helpBtn.setAttribute('aria-expanded', 'true');
+});
 
-dismissOnboarding?.addEventListener('click', () => {
-  try {
-    localStorage.setItem(ONBOARDING_DISMISSED_KEY, 'true');
-  } catch {}
-  onboarding?.classList.add('hidden');
+helpBtn?.addEventListener('mouseleave', () => {
+  if (document.activeElement !== helpBtn) {
+    helpBtn.setAttribute('aria-expanded', 'false');
+  }
+});
+
+helpBtn?.addEventListener('focus', () => {
+  helpBtn.setAttribute('aria-expanded', 'true');
+});
+
+helpBtn?.addEventListener('blur', () => {
+  helpBtn.setAttribute('aria-expanded', 'false');
 });
 
 // Check initially if there are any vacuum candidates to set initial disabled state

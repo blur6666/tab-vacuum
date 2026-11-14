@@ -22,6 +22,7 @@ Install here: https://chromewebstore.google.com/detail/tab-vacuum/fljnkehfhjfjoa
 
 - Incognito tabs and non-normal windows are excluded.
 - New-tab and system pages are protected when pinned, audible, grouped, or alone in a window.
+- Batch cleanup reserves one new-tab or system page when the selected candidates would otherwise empty its window.
 - Duplicate tabs are protected when pinned or audible.
 - Active tabs are eligible; closing a duplicate alone in its window also closes that window.
 - Duplicates are matched within each tab group, using normalised HTTP(S) URLs.

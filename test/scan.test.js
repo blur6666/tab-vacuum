@@ -453,11 +453,12 @@ test('a tab reported with no groupId field at all reads as ungrouped', () => {
   assert.deepEqual(plan.otherTabs.map((t) => t.groupId), [-1, -1]);
 });
 
-test('an all-junk window keeps its last tab', () => {
+test('an all-junk window reports every candidate for the set-aware close guard', () => {
   const junk = [0, 1, 2].map((index) => newTab({ index }));
   const plan = planCleanup(junk);
 
-  // Three tabs in the window, so soleTabInWindow does not fire for any of them.
+  // Planning reports all candidates; execute.js reserves the last tab when
+  // several individually safe candidates would collectively empty a window.
   assert.equal(plan.unusedNewTabs.length, 3);
 });
 

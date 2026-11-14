@@ -151,6 +151,8 @@ export async function closeTabs(plan, ids, options = {}) {
     else confirmed.push(id);
   }
 
+  preserveLastTabs(confirmed, skipped, liveList, duplicateIds);
+
   if (confirmed.length === 0) return { closed: 0, closedIds: [], skipped };
 
   await closer(confirmed);
@@ -175,6 +177,32 @@ function staleReason(tab, plannedUrl, id, selfTabId, isDuplicate = false, tabsPe
   }
 
   return null;
+}
+
+/**
+ * A set of individually safe new/system tabs can collectively empty a window.
+ * Reserve one such tab whenever this batch would remove every live tab there.
+ * Duplicate-only batches retain their documented ability to close a window.
+ */
+function preserveLastTabs(confirmed, skipped, liveList, duplicateIds) {
+  const confirmedSet = new Set(confirmed);
+  const tabsByWindow = new Map();
+
+  for (const tab of liveList) {
+    if (!tabsByWindow.has(tab.windowId)) tabsByWindow.set(tab.windowId, []);
+    tabsByWindow.get(tab.windowId).push(tab);
+  }
+
+  for (const windowTabs of tabsByWindow.values()) {
+    if (!windowTabs.every((tab) => confirmedSet.has(tab.id))) continue;
+
+    const reserved = windowTabs.findLast((tab) => !duplicateIds.has(tab.id));
+    if (reserved === undefined) continue;
+
+    confirmed.splice(confirmed.indexOf(reserved.id), 1);
+    confirmedSet.delete(reserved.id);
+    skipped.push({ id: reserved.id, reason: 'would be only tab in window' });
+  }
 }
 
 function urlsById(plan) {

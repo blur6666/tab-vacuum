@@ -213,6 +213,26 @@ test('a new tab that became the sole tab in its window since the scan is skipped
   assert.deepEqual(closer.calls, []);
 });
 
+test('a batch of new tabs cannot empty its window', async () => {
+  const tabs = [0, 1, 2].map((index) =>
+    tab({ url: 'chrome://newtab/', windowId: 1, index }),
+  );
+  const plan = planCleanup(tabs);
+  const closer = spyCloser();
+
+  const result = await closeTabs(plan, bulkSelection(plan), {
+    closer,
+    snapshot: unchanged(tabs),
+  });
+
+  assert.equal(result.closed, 2);
+  assert.deepEqual(result.closedIds, [tabs[0].id, tabs[1].id]);
+  assert.deepEqual(result.skipped, [
+    { id: tabs[2].id, reason: 'would be only tab in window' },
+  ]);
+  assert.deepEqual(closer.calls, [[tabs[0].id, tabs[1].id]]);
+});
+
 test('a new tab added to a group since the scan is skipped', async () => {
   const junk = tab({ url: 'chrome://newtab/', groupId: -1 });
   const filler = tab({ url: 'https://filler.example/' });

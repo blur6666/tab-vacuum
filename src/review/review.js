@@ -1,7 +1,6 @@
 import { queryAllTabs, getSelfTabId, queryGroupsById } from '../lib/chrome-tabs.js';
 import {
   hasTabsPermission,
-  requestTabsPermission,
   hasTabGroupsPermission,
   requestTabGroupsPermission,
 } from '../lib/permissions.js';
@@ -522,7 +521,7 @@ function rescanHandlers() {
   $('rescan').addEventListener('click', () => {
     // `tabs` is required, so this never prompts — it re-checks in case the
     // permission was revoked from the Details page while this tab sat open.
-    requestTabsPermission()
+    hasTabsPermission()
       .then((ok) => (ok ? load() : needsPermission()))
       .catch(showError);
   });
@@ -593,7 +592,7 @@ function showError(error) {
   status.textContent = `Something went wrong: ${error.message}`;
 }
 
-// On load there is no user gesture, so only check — never request.
+// Recheck the required permission on load in case the user revoked it.
 hasTabsPermission()
   .then((granted) => (granted ? load() : needsPermission()))
   .catch(showError);

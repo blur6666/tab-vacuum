@@ -8,7 +8,7 @@
  */
 
 import { queryAllTabs, openReviewPage } from '../lib/chrome-tabs.js';
-import { hasTabsPermission, requestTabsPermission } from '../lib/permissions.js';
+import { hasTabsPermission } from '../lib/permissions.js';
 import { planCleanup, MissingTabsPermissionError } from '../lib/scan.js';
 import { planVacuum } from '../lib/vacuum.js';
 import { planToMarkdown, prettyUrl } from '../lib/format.js';
@@ -86,7 +86,7 @@ hasTabsPermission().then(async (granted) => {
 });
 
 scanButton.addEventListener('click', () => {
-  const granted = requestTabsPermission();
+  const granted = hasTabsPermission();
 
   scanButton.disabled = true;
   vacuumButton.disabled = true;
@@ -108,7 +108,7 @@ vacuumButton.addEventListener('click', async () => {
   setStatus('Scanning and vacuuming…');
 
   try {
-    if (!await requestTabsPermission()) {
+    if (!await hasTabsPermission()) {
       denied();
       return;
     }

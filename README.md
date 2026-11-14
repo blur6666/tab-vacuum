@@ -40,7 +40,7 @@ Restore closed tabs with the browser’s **Ctrl+Shift+T**.
 - **`tabs`** exposes tab URLs and titles; Chromium labels it “Read your browsing history.”
 - **`tabGroups`** is optional and only adds group names and colours.
 - No telemetry, network requests, page-content access, or persistent history.
-- Scanning requires `tabs`; revoking it prevents scans.
+- Scanning checks the required `tabs` permission each time; revoking it prevents scans.
 
 ## Development
 

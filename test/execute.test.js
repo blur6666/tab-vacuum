@@ -166,6 +166,30 @@ test('a stale duplicate plan keeps the last copy when its keeper is gone', async
   assert.deepEqual(closer.calls, []);
 });
 
+test('a duplicate moved to a new tab group is kept when it is the only copy there', async () => {
+  const keeper = tab({
+    url: 'https://example.com/grouped',
+    groupId: 7,
+    index: 0,
+    active: true,
+  });
+  const copy = tab({ url: 'https://example.com/grouped', groupId: 7, index: 1 });
+  const plan = planCleanup([keeper, copy]);
+  const movedCopy = { ...copy, groupId: 9 };
+  const closer = spyCloser();
+
+  const result = await closeTabs(plan, bulkSelection(plan), {
+    closer,
+    snapshot: unchanged([keeper, movedCopy]),
+  });
+
+  assert.equal(result.closed, 0);
+  assert.deepEqual(result.skipped, [
+    { id: copy.id, reason: 'would be last duplicate copy' },
+  ]);
+  assert.deepEqual(closer.calls, []);
+});
+
 test('bulk selection takes unused new tabs and skips protected duplicates', () => {
   const junk = tab({ url: 'chrome://newtab/' });
   const keeper = tab({ url: 'https://example.com/b', index: 0 });

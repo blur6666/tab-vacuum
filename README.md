@@ -29,7 +29,7 @@ Install here: https://chromewebstore.google.com/detail/tab-vacuum/fljnkehfhjfjoa
 - Matching removes fragments, tracking parameters, trailing slashes, and default ports, then sorts query parameters.
 - Protocols, `www` prefixes, and path case remain distinct.
 - Suggested keepers favour pinned, active, then recently used tabs.
-- Tabs and duplicate groups are rechecked before closing; changed or newly protected tabs are skipped, and one matching copy always survives.
+- Tabs and duplicate groups are rebuilt from a fresh snapshot before closing; changed or newly protected tabs are skipped, and one matching copy in each current tab group always survives.
 
 **Limitation:** a used tab navigated back to a new-tab page looks like a fresh one.
 Restore closed tabs with the browser’s **Ctrl+Shift+T**.

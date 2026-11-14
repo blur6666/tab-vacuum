@@ -17,8 +17,9 @@
  */
 
 import { closeTabsById, queryAllTabs } from './chrome-tabs.js';
+import { DEDUPE_WITHIN_TAB_GROUPS } from './config.js';
 import { closeBlockers, protectionReasons } from './scan.js';
-import { isNewTabUrl } from './url.js';
+import { isNewTabUrl, normalizeUrl } from './url.js';
 
 /**
  * Every tab the UI may offer a checkbox for, keyed by id.
@@ -151,7 +152,7 @@ export async function closeTabs(plan, ids, options = {}) {
     else confirmed.push(id);
   }
 
-  preserveDuplicateCopies(plan, confirmed, skipped, live, plannedUrls);
+  preserveDuplicateCopies(plan, confirmed, skipped, liveList);
   preserveLastTabs(confirmed, skipped, liveList, duplicateIds);
 
   if (confirmed.length === 0) return { closed: 0, closedIds: [], skipped };
@@ -181,20 +182,34 @@ function staleReason(tab, plannedUrl, id, selfTabId, isDuplicate = false, tabsPe
 }
 
 /**
- * A stale plan may outlive its suggested keeper. Recheck every planned
- * duplicate group as a set so at least one still-matching copy survives.
+ * Rebuild duplicate groups from the live snapshot. Tabs may move between
+ * groups while a report is open, so planned group membership is not evidence
+ * that another copy will survive in the selected tab's current group.
  */
-function preserveDuplicateCopies(plan, confirmed, skipped, live, plannedUrls) {
+function preserveDuplicateCopies(plan, confirmed, skipped, liveList) {
+  const duplicateIds = new Set(
+    (plan.duplicateGroups ?? []).flatMap((group) => group.tabs.map((tab) => tab.id)),
+  );
   const confirmedSet = new Set(confirmed);
+  const liveGroups = new Map();
 
-  for (const group of plan.duplicateGroups ?? []) {
-    const liveCopies = group.tabs.filter((planned) => {
-      const current = live.get(planned.id);
-      return current !== undefined && (current.url ?? '') === plannedUrls.get(planned.id);
-    });
-    if (liveCopies.length === 0 || !liveCopies.every((tab) => confirmedSet.has(tab.id))) continue;
+  for (const tab of liveList) {
+    const normalized = normalizeUrl(tab.url);
+    if (normalized === null) continue;
+    const key = DEDUPE_WITHIN_TAB_GROUPS
+      ? `${normalized}\n${tab.groupId ?? -1}`
+      : normalized;
+    if (!liveGroups.has(key)) liveGroups.set(key, []);
+    liveGroups.get(key).push(tab);
+  }
 
-    const reserved = liveCopies[0];
+  for (const copies of liveGroups.values()) {
+    const selected = copies.filter(
+      (tab) => duplicateIds.has(tab.id) && confirmedSet.has(tab.id),
+    );
+    if (selected.length === 0 || selected.length !== copies.length) continue;
+
+    const reserved = selected[0];
     confirmed.splice(confirmed.indexOf(reserved.id), 1);
     confirmedSet.delete(reserved.id);
     skipped.push({ id: reserved.id, reason: 'would be last duplicate copy' });

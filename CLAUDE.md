@@ -6,15 +6,15 @@ Personal MV3 extension. When you press "Scan my tabs" it scans every tab of ever
 
 Acting happens in two places. On the review page you go through the results one by one and tick what you want gone, use the System tabs section's own **select all** plus **Close selected**, or click **Kill 'Em All!** to take every duplicate except one copy per group, plus the unused new tabs. System tabs are deliberately outside Kill 'Em All's reach — Settings or Downloads sitting open is usually intentional, unlike a stray blank tab, so it gets its own opt-in rather than riding along with the one-click danger button.
 
-The second is **Vacuum 'em all!** in the popup, which takes unused new tabs, system tabs *and* duplicate non-keepers in one armed-then-confirmed press — Kill 'Em All plus system tabs, without opening the report. It reaches system tabs where Kill 'Em All does not, and the compensation is that its confirm lists every tab it will close: on the review page a system tab is one visible row you tick yourself, so the equivalent here is seeing the list before confirming rather than a bare count. What it may take is a *selection over an ordinary scan*, never a second set of rules — `planVacuum()` in `src/lib/vacuum.js` filters `planCleanup()`'s output and nothing else, so every protection is the one the review page shows.
+The second is **Vacuum 'em all!** in the popup, which immediately closes unused new tabs, system tabs, and duplicate non-keepers in one click. It uses `planVacuum()` in `src/lib/vacuum.js`, a selection over `planCleanup()`'s output, so every protection is the one the review page shows. After closing, it lists the tabs actually closed or skipped and displays a fresh scan.
 
 **A rule that closes a tab has to be decidable from its URL.** Page titles and path guesses are not evidence: `/\b404\b/` against a title closes an article about a 404, and `/checkout/complete` closes the order confirmation. Both shipped once, in a `junk-rules.js` that no longer exists — see the commit that removed it. Detecting a real error page needs the response status, which needs host permissions this extension does not take, so it is not a heuristic to sharpen but a feature to decline.
 
 ## Rules
 
-1. **Nothing closes without a visible selection and a second click.** There is no dry-run flag any more — the safety is at runtime, in three layers: protections computed by `scan.js`, the two-click arm-then-fire confirm in the UI, and `closeTabs()` in `src/lib/execute.js` re-reading every tab immediately before closing it. *Why:* a review page can sit open for an hour while tabs navigate, get pinned, or start playing audio underneath it. Layer 3 is the one that actually holds.
+1. **Every close path uses the scan protections and close-time revalidation.** Review-page actions require a visible selection and a second click. Popup **Vacuum 'em all!** is the one-click exception: it closes the ordinary scan's candidates immediately, then lists what it closed or skipped and shows the refreshed state. There is no dry-run flag; `closeTabs()` in `src/lib/execute.js` re-reads every tab immediately before closing it. *Why:* a review page can sit open for an hour while tabs navigate, get pinned, or start playing audio underneath it.
 
-2. **The popup closes tabs from exactly one control, and that control shows its work.** "Scan my tabs" still only ever reports — scanning must never be one click away from deleting something. **Vacuum 'em all!** is the single exception, added deliberately: it arms on the first click and closes on the second, and the armed state lists the tabs it will take, not just how many. *Why:* the original rule was that the popup never acts at all, because the review page can show a row per tab and the popup cannot. A one-click bulk close that names its targets keeps what that rule was protecting — you see what goes before it goes — while a count alone does not, which is why the listing is part of the rule and not a nicety.
+2. **The popup has separate report and cleanup controls.** **Scan my tabs** only reports. **Vacuum 'em all!** immediately closes the candidates selected by the ordinary scan and then lists the tabs closed or skipped alongside a refreshed report. This is intentionally a one-click action; it does not preview the target list before closing.
 
 3. **Duplicates are deduplicated per tab group, and one copy always survives.** The same URL in "Work" and in "Research" is two groups, each keeping its own ★. Kill 'Em All only ever selects non-keepers, so it cannot empty a group however the protections fall. *Why:* copies in different groups are usually a deliberate choice, not a mistake. Ticking a ★ by hand is still allowed — that is a one-by-one decision, not a bulk one.
 
@@ -40,7 +40,7 @@ When a run covers several tasks, that is several commits, each holding one task'
 
 ## Writing style for `.md` files
 
-**Do not hard-wrap Markdown at 80 characters.** A paragraph is one line, however long it runs — no manual line breaks inside it. Break lines only where the document genuinely breaks: between paragraphs, list items, table rows and headings. *Why:* re-wrapped paragraphs turn a one-word edit into a diff across every line of the paragraph, and editors soft-wrap for reading anyway. This applies to CLAUDE.md, README.md, BACKLOG.md and any other Markdown in the repo. Source code keeps its own line length; this rule is about prose only.
+**Do not hard-wrap Markdown at 80 characters.** A paragraph is one line, however long it runs — no manual line breaks inside it. Break lines only where the document genuinely breaks: between paragraphs, list items, table rows and headings. *Why:* re-wrapped paragraphs turn a one-word edit into a diff across every line of the paragraph, and editors soft-wrap for reading anyway. This applies to all Markdown in the repo. Source code keeps its own line length; this rule is about prose only.
 
 ## Architecture constraints
 
@@ -63,34 +63,10 @@ When a run covers several tasks, that is several commits, each holding one task'
 
 - **Brave hands the extensions API `chrome://newtab/`**, not the `brave://newtab/` its address bar shows. Edge reports `edge://newtab/`. `NEW_TAB_URLS` must carry the `chrome://` form or Brave never matches.
 - **`--load-extension` is disabled only on Chrome-branded builds (137+).** It works on Brave, Edge, and Playwright's bundled Chromium, headless included, so browser testing is partly automatable — recipe in README.md. Automation still can't judge whether a flagged tab was junk, so the false-positive audit stays human.
-- **The confirm is two clicks on one button, never `confirm()`.** A native dialog blocks every extension event until dismissed and cannot be driven from an automated run. Same reason there is no `alert()` anywhere.
+- **Review-page confirmations use two clicks on one button, never `confirm()`.** A native dialog blocks every extension event until dismissed and cannot be driven from an automated run. Same reason there is no `alert()` anywhere. Popup Vacuum is intentionally one click.
 
 ## Not God's mandaments but be careful:
 
 - **No `--remote-debugging-port`.** Unauthenticated; any local process can drive it. Playwright talks over a pipe instead.
 - **Never `taskkill` a browser process.** It kills the user's real windows and real tabs. Close the Playwright context through its API.
 - **Never point an automated run at the real profile.** Always a throw-away `--user-data-dir`.
-
-<!-- BACKLOG.MD GUIDELINES START -->
-<!-- backlog.md-instructions-version: 1.50.1 -->
-<CRITICAL_INSTRUCTION>
-
-## Backlog.md Workflow
-
-This project uses Backlog.md for task and project management.
-
-**For every user request in this project, run `backlog instructions overview` before answering or taking action.**
-
-Use the overview to decide whether to search, read, create, or update Backlog tasks.
-
-Before task lifecycle actions, read the matching detailed guide:
-- `backlog instructions task-creation` before creating or splitting tasks
-- `backlog instructions task-execution` before planning, changing status or assignee, adding a plan or implementation notes, or implementing task work
-- `backlog instructions task-finalization` before checking acceptance criteria, writing final summaries, or moving tasks to terminal statuses
-
-Use `backlog <command> --help` before running unfamiliar commands. Help shows options, fields, and examples.
-
-Do not edit Backlog task, draft, document, decision, or milestone markdown files directly. Use the `backlog` CLI so metadata, relationships, and history stay consistent.
-
-</CRITICAL_INSTRUCTION>
-<!-- BACKLOG.MD GUIDELINES END -->

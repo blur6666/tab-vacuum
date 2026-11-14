@@ -1,7 +1,7 @@
 # Runs the suite that test/guards.test.js belongs to. Those guards are the
 # repo's structural guarantees — one file may close a tab, the manifest may
 # not grow — and until this workflow existed nothing ran them unless someone
-# remembered to. See BACKLOG.md.
+# remembered to. This workflow keeps the guard suite running on every push and PR.
 name: test
 
 on:

@@ -8,7 +8,7 @@ Tab Vacuum does not collect, store, transmit, or sell any data. There is no acco
 
 ## What the extension reads
 
-When you click **Scan my tabs**, Tab Vacuum reads the following from the tabs open in your normal browser windows:
+When you click **Scan my tabs** or **Vacuum 'em all!**, Tab Vacuum reads the following from the tabs open in your normal browser windows:
 
 - the tab's URL and title, to identify duplicate tabs and unused new-tab pages
 - the tab's window, index, and tab-group id, to group and order the results

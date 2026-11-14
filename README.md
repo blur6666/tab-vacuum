@@ -2,7 +2,7 @@
 
 A Chromium extension that finds junk tabs across all your windows: new-tab pages you never used, browser-internal pages like Settings and Downloads, and groups of tabs pointing at the same page.
 
-It finds candidates first and closes nothing on its own. You either tick the ones you want gone, use a section's own **select all** plus **Close selected**, or press **Kill 'Em All** to take every duplicate except one copy per group, plus the unused new tabs. Every route needs a second click to confirm.
+**Scan my tabs** reports candidates without closing anything. **Vacuum 'em all!** immediately closes unused new tabs, system tabs, and duplicate non-keepers in one click, then shows a fresh scan and lists the tabs it closed or skipped. On the review page, you can tick individual tabs, use a section's **select all** plus **Close selected**, or press **Kill 'Em All** to take every duplicate except one copy per group plus the unused new tabs; review-page close actions still require a second click.
 
 ## Install (unpacked)
 
@@ -20,11 +20,11 @@ That warning is broader than what the extension does, and the naming is genuinel
 
 ## Using the extension
 
-Open the extension on the top right, popup, click **Scan my tabs**. The extension reads every tab in every normal browser window using the same profile as you and produces the results below. Nothing runs in the background — there is no service worker, and no scan happens unless you click. WYSIWYG
+Open the extension from the toolbar. **Scan my tabs** reads every tab in every normal browser window using the same profile as you and produces the results below. Nothing runs in the background; a scan happens only when you click **Scan my tabs** or **Vacuum 'em all!**.
 
 Once results are showing, that same button reads **Scan again** — pressing it re-runs the scan in place. **Review & clean →** is the one that moves you to the report.
 
-The popup only ever reports. **Review & clean →** opens a full page listing everything it found, and that page is the only place anything closes.
+**Scan my tabs** reports in the popup. **Vacuum 'em all!** closes its candidates immediately and shows both the tabs it closed and a fresh scan. **Review & clean →** opens a full page listing everything the scan found for detailed, one-by-one cleanup.
 
 Every row on the review page shows which tab group it belongs to — `g1`, `g2`, … numbered stably across the whole report, or `—` for an ungrouped tab. Grant the optional `tabGroups` permission and the column reads `g1 · Work` in the group's own colour instead. The browser's own group id is in the tooltip, which is what the copied report lists.
 
@@ -140,7 +140,7 @@ If you revoke `tabs` from the extension's Details page, the scan refuses to run 
 There is no dry-run flag. The safety is at runtime, in three layers:
 
 1. **Protections.** A protected tab has a disabled checkbox and is excluded from every bulk action — select-all and Kill 'Em All walk only closable rows, so they cannot reach it.
-2. **A second click.** Both **Close selected** and **Kill 'Em All** arm on the first click — `Close 14? — click again` — and revert after three seconds. Kill 'Em All also ticks everything it is about to take, so the selection is visible before you confirm it. Deliberately not a native `confirm()` dialog: those block every extension event until dismissed.
+2. **Review-page confirmation.** **Close selected** and **Kill 'Em All** arm on the first click — `Close 14? — click again` — and revert after three seconds. Kill 'Em All also ticks everything it is about to take, so the selection is visible before you confirm it. **Vacuum 'em all!** is the deliberate one-click exception: it closes the ordinary scan's candidates immediately and then lists the tabs it closed or skipped alongside the refreshed report. Review-page confirmation is not a native `confirm()` dialog, which would block every extension event until dismissed.
 3. **Re-validation at the moment of closing.** `closeTabs()` in `src/lib/execute.js` re-reads every tab first and skips any that changed since the scan — navigated somewhere else, became pinned, started playing audio, or was already closed. Each skip is reported back with its reason.
 
 Layer 3 is the one that actually holds. A review page can sit open for an hour while tabs change underneath it.

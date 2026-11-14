@@ -83,7 +83,7 @@ try {
   } while (Date.now() < deadline);
   assert.ok(report.status.startsWith('Vacuum complete:'), JSON.stringify(report));
   assert.equal(await replacement.evaluate("getComputedStyle(document.querySelector('#results')).display"), 'none', 'Vacuum does not show the scan breakdown');
-  assert.equal(await replacement.evaluate("document.querySelector('#scan').textContent"), 'Scan my tabs', 'Vacuum does not turn Scan into Scan again');
+  assert.equal(await replacement.evaluate("document.querySelector('#scan').textContent"), 'Scan my tabs for junks and dupes', 'Vacuum does not turn Scan into Scan again');
   assert.ok(junk.isClosed(), 'active new tab was removed immediately');
   assert.ok(report.rows.some((row) => row.startsWith('Closed:') && row.includes('unused new tab')));
   assert.ok(report.height > initialHeight, 'popup expands to show completed results');

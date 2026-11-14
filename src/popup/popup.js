@@ -2,7 +2,7 @@
  * Tab Vacuum popup.
  *
  * Provides:
- * 1. "Scan my tabs" / "Scan again" -> Scans and shows breakdown, with link to Review page.
+ * 1. "Scan my tabs for junks and dupes" / "Scan again" -> Scans and shows breakdown, with link to Review page.
  * 2. "Vacuum 'em all!" -> One-click scan & delete; then shows the tabs closed
  *    or skipped, without showing the scan breakdown.
  */
@@ -16,7 +16,7 @@ import { DEBUG_LOG_SCANNED_TABS } from '../lib/config.js';
 
 const $ = (id) => document.getElementById(id);
 
-const SCAN = 'Scan my tabs';
+const SCAN = 'Scan my tabs for junks and dupes';
 const SCAN_AGAIN = '⟳ Scan again';
 const VACUUM = "Vacuum 'em all!";
 
@@ -40,7 +40,7 @@ let lastPlan = null;
 
 scanButton.textContent = SCAN;
 scanButton.title = SCAN_TOOLTIP;
-scanButton.setAttribute('aria-label', `Scan my tabs: ${SCAN_TOOLTIP.toLowerCase()}`);
+scanButton.setAttribute('aria-label', `Scan my tabs for junks and dupes: ${SCAN_TOOLTIP.toLowerCase()}`);
 
 vacuumButton.textContent = VACUUM;
 vacuumButton.title = VACUUM_TOOLTIP;

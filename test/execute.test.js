@@ -166,6 +166,29 @@ test('a stale duplicate plan keeps the last copy when its keeper is gone', async
   assert.deepEqual(closer.calls, []);
 });
 
+test('an unscanned incognito copy cannot count as the surviving duplicate', async () => {
+  const keeper = tab({ url: 'https://example.com/incognito', index: 0, active: true });
+  const copy = tab({ url: 'https://example.com/incognito', index: 1 });
+  const incognitoCopy = tab({
+    url: 'https://example.com/incognito',
+    index: 2,
+    incognito: true,
+  });
+  const plan = planCleanup([keeper, copy]);
+  const closer = spyCloser();
+
+  const result = await closeTabs(plan, bulkSelection(plan), {
+    closer,
+    snapshot: unchanged([copy, incognitoCopy]),
+  });
+
+  assert.equal(result.closed, 0);
+  assert.deepEqual(result.skipped, [
+    { id: copy.id, reason: 'would be last duplicate copy' },
+  ]);
+  assert.deepEqual(closer.calls, []);
+});
+
 test('a duplicate moved to a new tab group is kept when it is the only copy there', async () => {
   const keeper = tab({
     url: 'https://example.com/grouped',

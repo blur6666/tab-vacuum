@@ -17,7 +17,7 @@
  */
 
 import { closeTabsById, queryAllTabs } from './chrome-tabs.js';
-import { DEDUPE_WITHIN_TAB_GROUPS } from './config.js';
+import { DEDUPE_WITHIN_TAB_GROUPS, INCLUDE_INCOGNITO } from './config.js';
 import { closeBlockers, protectionReasons } from './scan.js';
 import { isNewTabUrl, normalizeUrl } from './url.js';
 
@@ -194,6 +194,9 @@ function preserveDuplicateCopies(plan, confirmed, skipped, liveList) {
   const liveGroups = new Map();
 
   for (const tab of liveList) {
+    if (tab.incognito && !INCLUDE_INCOGNITO) continue;
+    if (tab.windowType !== undefined && tab.windowType !== 'normal') continue;
+
     const normalized = normalizeUrl(tab.url);
     if (normalized === null) continue;
     const key = DEDUPE_WITHIN_TAB_GROUPS

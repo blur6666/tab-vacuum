@@ -10,7 +10,7 @@
 import { queryAllTabs, openReviewPage } from '../lib/chrome-tabs.js';
 import { hasTabsPermission } from '../lib/permissions.js';
 import { planCleanup, MissingTabsPermissionError } from '../lib/scan.js';
-import { planVacuum } from '../lib/vacuum.js';
+import { planVacuum, vacuumPreview } from '../lib/vacuum.js';
 import { planToMarkdown, prettyUrl } from '../lib/format.js';
 import { DEBUG_LOG_SCANNED_TABS } from '../lib/config.js';
 
@@ -167,8 +167,7 @@ async function scan() {
   const plan = planCleanup(tabs);
   lastPlan = plan;
 
-  const vacuumRes = planVacuum(tabs);
-  vacuumButton.disabled = vacuumRes.totalClosable === 0;
+  vacuumButton.disabled = vacuumPreview(plan).length === 0;
 
   render(plan);
 }

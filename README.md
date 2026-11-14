@@ -10,7 +10,7 @@ Install here: https://chromewebstore.google.com/detail/tab-vacuum/fljnkehfhjfjoa
 ## Use
 
 - **Scan my tabs** previews cleanup candidates without closing anything.
-- **Vacuum 'em all!** immediately closes eligible new tabs, system tabs, and duplicate non-keepers.
+- **Vacuum 'em all!** immediately closes eligible new tabs, system tabs, and duplicate non-keepers, then keeps the popup open to list what closed or was skipped. The active tab beneath the popup stays open so the results remain visible.
 - **Review & clean →** opens the full report for selective cleanup.
 - **Close selected** and **Kill 'Em All** require a second click within three seconds.
 - **Kill 'Em All** keeps one copy per duplicate group and excludes system tabs.

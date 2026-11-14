@@ -15,6 +15,12 @@ export function queryAllTabs() {
   return chrome.tabs.query({ windowType: 'normal' });
 }
 
+/** The browser tab beneath the extension popup in the last-focused window. */
+export async function getActiveTabId() {
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  return tab?.id ?? null;
+}
+
 /**
  * The one real close call in the codebase. Everything that decides *whether*
  * to call it lives in execute.js; test/guards.test.js fails the suite if this

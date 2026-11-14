@@ -7,7 +7,7 @@
  *    or skipped, without showing the scan breakdown.
  */
 
-import { queryAllTabs, openReviewPage } from '../lib/chrome-tabs.js';
+import { queryAllTabs, getActiveTabId, openReviewPage } from '../lib/chrome-tabs.js';
 import { hasTabsPermission } from '../lib/permissions.js';
 import { planCleanup, MissingTabsPermissionError } from '../lib/scan.js';
 import { closeTabs } from '../lib/execute.js';
@@ -98,8 +98,12 @@ vacuumButton.addEventListener('click', async () => {
       denied();
       return;
     }
-    const vacuumPlan = planVacuum(await queryAllTabs());
-    const outcome = await closeTabs(vacuumPlan.plan, vacuumPlan.closableIds);
+    const tabs = await queryAllTabs();
+    const vacuumPlan = planVacuum(tabs);
+    const popupTabId = await getActiveTabId();
+    const outcome = await closeTabs(vacuumPlan.plan, vacuumPlan.closableIds, {
+      selfTabId: popupTabId,
+    });
     await showVacuumResult({ outcome, rows: vacuumPlan.rows });
   } catch (error) {
     showError(error);

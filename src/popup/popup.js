@@ -3,17 +3,17 @@
  *
  * Provides:
  * 1. "Scan my tabs" / "Scan again" -> Scans and shows breakdown, with link to Review page.
- * 2. "Vacuum 'em all!" -> One-click scan & delete for broader junk + duplicate tabs
- *    with a two-click confirmation.
+ * 2. "Vacuum 'em all!" -> One-click scan & delete for broader junk + duplicate tabs,
+ *    closes immediately and prints results after deletion.
  */
 
 import { queryAllTabs, openReviewPage } from '../lib/chrome-tabs.js';
 import { hasTabsPermission, requestTabsPermission } from '../lib/permissions.js';
 import { planCleanup, MissingTabsPermissionError } from '../lib/scan.js';
-import { planVacuum, vacuumPreview } from '../lib/vacuum.js';
+import { planVacuum } from '../lib/vacuum.js';
 import { closeTabs } from '../lib/execute.js';
 import { planToMarkdown, prettyUrl } from '../lib/format.js';
-import { DEBUG_LOG_SCANNED_TABS, CONFIRM_REVERT_MS } from '../lib/config.js';
+import { DEBUG_LOG_SCANNED_TABS } from '../lib/config.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -23,11 +23,10 @@ const VACUUM = "Vacuum 'em all!";
 
 const SCAN_TOOLTIP = 'Inspect and review duplicate, junk, and system tabs — closes nothing on its own';
 const SCAN_AGAIN_TOOLTIP = 'Re-scan all tabs and refresh the report in place';
-const VACUUM_TOOLTIP = "Instant 2-click cleanup: scans and closes duplicate and junk tabs across all windows, listing every tab before you confirm";
+const VACUUM_TOOLTIP = "Instant 1-click cleanup: scans and closes duplicate, junk, and system tabs across all windows";
 
 const scanButton = $('scan');
 const vacuumButton = $('vacuum');
-const vacuumList = $('vacuum-list');
 const status = $('status');
 const results = $('results');
 const toggleProtected = $('toggle-protected');
@@ -38,7 +37,6 @@ const helpBtn = $('help-btn');
 
 let lastPlan = null;
 let vacuumPlan = null;
-let armedVacuumTimer = null;
 
 scanButton.textContent = SCAN;
 scanButton.title = SCAN_TOOLTIP;
@@ -78,7 +76,6 @@ hasTabsPermission().then(async (granted) => {
 });
 
 scanButton.addEventListener('click', () => {
-  disarmVacuum();
   const granted = requestTabsPermission();
 
   scanButton.disabled = true;
@@ -94,11 +91,6 @@ scanButton.addEventListener('click', () => {
 });
 
 vacuumButton.addEventListener('click', async () => {
-  if (vacuumButton.classList.contains('armed')) {
-    await executeVacuum();
-    return;
-  }
-
   const granted = await requestTabsPermission();
   if (!granted) {
     denied();
@@ -107,7 +99,7 @@ vacuumButton.addEventListener('click', async () => {
 
   scanButton.disabled = true;
   vacuumButton.disabled = true;
-  setStatus('Scanning…');
+  setStatus('Scanning and vacuuming…');
 
   try {
     const tabs = await queryAllTabs();
@@ -118,16 +110,20 @@ vacuumButton.addEventListener('click', async () => {
     vacuumPlan = result;
 
     if (result.totalClosable === 0) {
-      setStatus('');
+      setStatus('No tabs to clean up.');
       vacuumButton.disabled = true;
-      disarmVacuum();
       return;
     }
 
-    armVacuum(result);
+    // Execute immediately without confirmation
+    await closeTabs(result.plan, result.closableIds);
+    setStatus('');
+
+    // Show the updated scan results after cleanup
+    if (results.classList.contains('hidden')) await refreshVacuumState();
+    else await scan();
   } catch (error) {
     showError(error);
-    disarmVacuum();
     vacuumButton.disabled = false;
   } finally {
     scanButton.disabled = false;
@@ -138,81 +134,8 @@ vacuumButton.addEventListener('click', async () => {
 });
 
 /**
- * Arm the confirm, and list every tab it will close.
- *
- * The list is the reason the popup is allowed to close anything at all
- * (CLAUDE.md rule 2). A bare count is not a confirm you can check — it tells
- * you how many things you are about to lose, not which.
+ * Vacuum 'em all! is enabled iff a fresh scan still finds something to close.
  */
-function armVacuum(result) {
-  if (armedVacuumTimer) {
-    clearTimeout(armedVacuumTimer);
-    armedVacuumTimer = null;
-  }
-  setStatus('');
-
-  const count = result.totalClosable;
-  vacuumButton.textContent = `Closing ${count} tab${count === 1 ? '' : 's'}, ok?`;
-  vacuumButton.title = `Click again to confirm closing ${count} tab${count === 1 ? '' : 's'}`;
-  vacuumButton.setAttribute('aria-label', `Confirm vacuum: close ${count} tab${count === 1 ? '' : 's'} now`);
-  vacuumButton.classList.add('armed');
-
-  vacuumList.replaceChildren(
-    ...vacuumPreview(result.plan).map((row) => {
-      const li = document.createElement('li');
-      // textContent throughout: these are real page titles and urls.
-      li.textContent = `${row.title || prettyUrl(row.url)} — ${row.why}`;
-      li.title = row.url;
-      return li;
-    }),
-  );
-  vacuumList.classList.remove('hidden');
-
-  armedVacuumTimer = setTimeout(() => {
-    disarmVacuum();
-  }, CONFIRM_REVERT_MS);
-}
-
-function disarmVacuum() {
-  if (armedVacuumTimer) {
-    clearTimeout(armedVacuumTimer);
-    armedVacuumTimer = null;
-  }
-  vacuumButton.textContent = VACUUM;
-  vacuumButton.title = VACUUM_TOOLTIP;
-  vacuumButton.setAttribute('aria-label', `Vacuum 'em all: ${VACUUM_TOOLTIP.toLowerCase()}`);
-  vacuumButton.classList.remove('armed');
-  vacuumList.replaceChildren();
-  vacuumList.classList.add('hidden');
-  vacuumPlan = null;
-  setStatus('');
-}
-
-async function executeVacuum() {
-  if (!vacuumPlan) return;
-  const currentVacuum = vacuumPlan;
-  disarmVacuum();
-
-  scanButton.disabled = true;
-  vacuumButton.disabled = true;
-
-  try {
-    await closeTabs(currentVacuum.plan, currentVacuum.closableIds);
-    setStatus('');
-
-    // Never assume the vacuum emptied the profile — revalidation can skip
-    // tabs, so the button's state comes from a fresh count either way.
-    if (results.classList.contains('hidden')) await refreshVacuumState();
-    else await scan();
-  } catch (error) {
-    showError(error);
-    vacuumButton.disabled = false;
-  } finally {
-    scanButton.disabled = false;
-  }
-}
-
-/** Vacuum 'em all! is enabled iff a fresh scan still finds something to close. */
 async function refreshVacuumState() {
   const tabs = await queryAllTabs();
   vacuumButton.disabled = planVacuum(tabs).totalClosable === 0;

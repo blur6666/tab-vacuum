@@ -157,28 +157,9 @@ header {
   margin-bottom: 2px;
 }
 
-button.secondary {
-  border-color: color-mix(var(--muted) 50%, transparent);
-  color: dark(#ffffff, #10131a);
-  width: 50%;
-}
-
 .action-buttons {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-}
-
-
-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-
-footer button {
-  font-size: 12px;
-  padding: 4px 8px;
 }

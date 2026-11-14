@@ -60,10 +60,9 @@ button.primary {
   width: 100%;
 }
 
-button.secondary  {
-  /* background: var(--accent); */
-  border-color: color-mix(var(--border) 50%, transparent);
-  color: light-dark(--text);
+button.secondary {
+  border-color: color-mix(in srgb, var(--border) 50%, transparent);
+  color: var(--text);
   font-weight: 600;
   padding: 9px 12px;
   width: 50%;

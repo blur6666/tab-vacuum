@@ -1,5 +1,5 @@
 import { queryAllTabs } from './chrome-tabs.js';
-import { planVacuum, vacuumPreview } from './vacuum.js';
+import { planVacuum } from './vacuum.js';
 import { closeTabs } from './execute.js';
 
 /** Runs outside the popup: removing its active tab can destroy that document. */
@@ -11,7 +11,7 @@ export async function runVacuum({
   const tabs = await query();
   const result = planVacuum(tabs);
   const activeTab = tabs.find((tab) => tab.windowId === windowId && tab.active);
-  const rows = vacuumPreview(result.plan);
+  const rows = result.rows;
   const outcome = await close(result.plan, result.closableIds);
   return {
     outcome,

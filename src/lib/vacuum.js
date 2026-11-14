@@ -25,25 +25,20 @@ import { planCleanup } from './scan.js';
 /**
  * @param {Array<object>} tabs   chrome.tabs.Tab-shaped objects
  * @param {{selfTabId?: number|null}} options
- * @returns {{totals: object, closableIds: number[], totalClosable: number, plan: object}}
+ * @returns {{closableIds: number[], totalClosable: number, rows: Array<object>, plan: object}}
  */
 export function planVacuum(tabs, { selfTabId = null } = {}) {
   // Throws MissingTabsPermissionError when urls are redacted, same as any
   // other scan. Never soften that — see CLAUDE.md.
   const plan = planCleanup(tabs, { selfTabId });
 
-  const closableIds = [
-    ...plan.unusedNewTabs.filter((tab) => tab.closable).map((tab) => tab.id),
-    ...plan.systemTabs.filter((tab) => tab.closable).map((tab) => tab.id),
-    ...plan.duplicateGroups.flatMap((group) =>
-      group.tabs.filter((tab) => tab.closable && !tab.isKeeper).map((tab) => tab.id),
-    ),
-  ];
+  const rows = vacuumPreview(plan);
+  const closableIds = rows.map((tab) => tab.id);
 
   return {
-    totals: plan.totals,
     closableIds,
     totalClosable: closableIds.length,
+    rows,
     // The full plan, so closeTabs() can re-validate every id against it.
     plan,
   };

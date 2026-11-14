@@ -36,7 +36,6 @@ const copyButton = $('copy');
 const helpBtn = $('help-btn');
 
 let lastPlan = null;
-let vacuumPlan = null;
 
 scanButton.textContent = SCAN;
 scanButton.title = SCAN_TOOLTIP;
@@ -107,27 +106,25 @@ vacuumButton.addEventListener('click', async () => {
       console.log(`Vacuum scan: ${tabs.length} tabs`, tabs);
     }
     const result = planVacuum(tabs);
-    vacuumPlan = result;
 
     if (result.totalClosable === 0) {
+      render(result.plan);
       setStatus('No tabs to clean up.');
       vacuumButton.disabled = true;
       return;
     }
 
-    await closeTabs(result.plan, result.closableIds);
-    setStatus('');
-
-    if (results.classList.contains('hidden')) await refreshVacuumState();
-    else await scan();
+    const outcome = await closeTabs(result.plan, result.closableIds);
+    await scan();
+    setStatus(
+      `Vacuum complete: closed ${outcome.closed} tab${outcome.closed === 1 ? '' : 's'}; ` +
+        `skipped ${outcome.skipped.length}.`,
+    );
   } catch (error) {
     showError(error);
     vacuumButton.disabled = false;
   } finally {
     scanButton.disabled = false;
-    if (vacuumPlan && vacuumPlan.totalClosable > 0) {
-      vacuumButton.disabled = false;
-    }
   }
 });
 

@@ -3,14 +3,14 @@
  *
  * Provides:
  * 1. "Scan my tabs" / "Scan again" -> Scans and shows breakdown, with link to Review page.
- * 2. "Vacuum 'em all!" -> One-click scan & delete for broader junk + duplicate tabs,
- *    closes immediately and prints results after deletion.
+ * 2. "Vacuum 'em all!" -> One-click scan & delete; then shows the tabs closed
+ *    or skipped and refreshes the report.
  */
 
 import { queryAllTabs, openReviewPage } from '../lib/chrome-tabs.js';
 import { hasTabsPermission, requestTabsPermission } from '../lib/permissions.js';
 import { planCleanup, MissingTabsPermissionError } from '../lib/scan.js';
-import { planVacuum } from '../lib/vacuum.js';
+import { planVacuum, vacuumPreview } from '../lib/vacuum.js';
 import { closeTabs } from '../lib/execute.js';
 import { planToMarkdown, prettyUrl } from '../lib/format.js';
 import { DEBUG_LOG_SCANNED_TABS } from '../lib/config.js';
@@ -27,6 +27,8 @@ const VACUUM_TOOLTIP = "Instant 1-click cleanup: scans and closes duplicate, jun
 
 const scanButton = $('scan');
 const vacuumButton = $('vacuum');
+const vacuumOutcome = $('vacuum-outcome');
+const vacuumOutcomeList = $('vacuum-outcome-list');
 const status = $('status');
 const results = $('results');
 const toggleProtected = $('toggle-protected');
@@ -98,6 +100,7 @@ vacuumButton.addEventListener('click', async () => {
 
   scanButton.disabled = true;
   vacuumButton.disabled = true;
+  clearVacuumOutcome();
   setStatus('Scanning and vacuuming…');
 
   try {
@@ -114,8 +117,10 @@ vacuumButton.addEventListener('click', async () => {
       return;
     }
 
+    const plannedRows = new Map(vacuumPreview(result.plan).map((row) => [row.id, row]));
     const outcome = await closeTabs(result.plan, result.closableIds);
     await scan();
+    renderVacuumOutcome(outcome, plannedRows);
     setStatus(
       `Vacuum complete: closed ${outcome.closed} tab${outcome.closed === 1 ? '' : 's'}; ` +
         `skipped ${outcome.skipped.length}.`,
@@ -134,6 +139,7 @@ async function refreshVacuumState() {
 }
 
 async function scan() {
+  clearVacuumOutcome();
   const tabs = await queryAllTabs();
   if (DEBUG_LOG_SCANNED_TABS) {
     console.log(`Tab Vacuum: scanned ${tabs.length} tabs`, JSON.parse(JSON.stringify(tabs)));
@@ -145,6 +151,40 @@ async function scan() {
   vacuumButton.disabled = vacuumRes.totalClosable === 0;
 
   render(plan);
+}
+
+function renderVacuumOutcome(outcome, plannedRows) {
+  const rows = [
+    ...outcome.closedIds.map((id) => ({
+      id,
+      text: `Closed: ${formatVacuumTab(plannedRows.get(id))}`,
+      url: plannedRows.get(id)?.url,
+    })),
+    ...outcome.skipped.map(({ id, reason }) => ({
+      id,
+      text: `Skipped: ${formatVacuumTab(plannedRows.get(id))} — ${reason}`,
+      url: plannedRows.get(id)?.url,
+    })),
+  ];
+
+  vacuumOutcomeList.replaceChildren(
+    ...rows.map(({ id, text, url }) => {
+      const li = document.createElement('li');
+      li.textContent = text;
+      if (url) li.title = url;
+      return li;
+    }),
+  );
+  vacuumOutcome.classList.toggle('hidden', false);
+}
+
+function formatVacuumTab(tab) {
+  return tab ? `${tab.title || prettyUrl(tab.url)} — ${tab.why}` : 'tab no longer available';
+}
+
+function clearVacuumOutcome() {
+  vacuumOutcome.classList.toggle('hidden', true);
+  vacuumOutcomeList.replaceChildren();
 }
 
 function render(plan) {

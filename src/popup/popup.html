@@ -25,7 +25,7 @@
             <span class="help-title">Quick guide</span>
             <ul class="help-list">
               <li><strong>Scan my tabs:</strong> Inspect &amp; review duplicates, junk, and system tabs — closes nothing on its own.</li>
-              <li><strong>Vacuum 'em all!:</strong> Instant 1-click cleanup that scans and closes duplicates, junk, and system tabs — prints results after deletion.</li>
+              <li><strong>Vacuum 'em all!:</strong> Instant 1-click cleanup that scans and closes duplicates, junk, and system tabs — then lists what it closed.</li>
             </ul>
           </div>
         </div>
@@ -37,6 +37,13 @@
       </div>
 
       <p id="status" class="muted status"></p>
+
+      <section id="vacuum-outcome" class="hidden result-block">
+        <div class="result-head">
+          <span>Vacuum results</span>
+        </div>
+        <ul id="vacuum-outcome-list" class="detail-list"></ul>
+      </section>
 
       <section id="results" class="hidden">
         <p id="totals" class="muted"></p>

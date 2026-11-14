@@ -8,7 +8,7 @@
  *
  *   1. Protections computed by scan.js — a protected tab has no working
  *      checkbox and no bulk action can reach it.
- *   2. An explicit two-click confirm in the UI.
+ *   2. Review-page actions require an explicit two-click confirm.
  *   3. revalidate() below, which re-reads every tab immediately before closing
  *      and drops anything that changed since the scan.
  *

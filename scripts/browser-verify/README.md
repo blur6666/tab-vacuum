@@ -1,11 +1,10 @@
 # Browser verification
 
-Two scripts that load the extension unpacked in a real Chromium and drive the popup. They exist because both bugs found on 2026-08-16 — `chrome://newtab/` being offered as a closable system tab, and the Vacuum confirm showing 7 of 33 rows — passed the whole `node --test` suite. Neither is reachable without a browser at real popup dimensions.
+The script loads the extension unpacked in a real Chromium and drives the popup. It checks that one click performs Vacuum, lists the tabs closed or skipped, shows the post-cleanup report, and leaves decoy pages open.
 
 | Script | Checks |
 | --- | --- |
-| `confirm-lists-targets.mjs` | The armed confirm names the tabs it will close, decoys stay out of it, and firing the second click closes those tabs and nothing else. |
-| `confirm-fits-popup.mjs` | With 33 tabs queued, the list still shows its rows inside Chrome's 600px popup cap and leaves the button on screen — CLAUDE.md rule 2. |
+| `vacuum-results.mjs` | One click closes only candidates, lists the tabs closed or skipped, and shows the refreshed report. |
 
 ## Running them
 
@@ -13,7 +12,7 @@ Playwright is **not** a dependency of this project and must not become one witho
 
 ```bash
 mkdir -p ~/pw && cd ~/pw && npm init -y && npm install playwright
-node /path/to/tab-vacuum/scripts/browser-verify/confirm-lists-targets.mjs
+node /path/to/tab-vacuum/scripts/browser-verify/vacuum-results.mjs
 ```
 
 Nothing here runs during `npm test`. `node --test` only discovers files under `test/`, which is why these live in `scripts/`.

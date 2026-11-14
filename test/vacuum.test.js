@@ -1,10 +1,10 @@
 /**
  * What the Vacuum button may and may not close.
  *
- * The bulk of these are negative tests. Vacuum closes tabs from the popup with
- * one confirm and no per-tab review, so what matters is not that it finds junk
- * — the scan already does that — but that it never reaches anything else. The
- * first test is the one that used to fail.
+ * The bulk of these are negative tests. Vacuum closes tabs from the popup in
+ * one click and without per-tab review, so what matters is not that it finds
+ * junk — the scan already does that — but that it never reaches anything else.
+ * The first test is the one that used to fail.
  */
 
 import test from 'node:test';

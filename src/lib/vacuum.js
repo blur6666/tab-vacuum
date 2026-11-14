@@ -50,8 +50,8 @@ export function planVacuum(tabs, { selfTabId = null } = {}) {
 }
 
 /**
- * A one-line-per-tab summary of what Vacuum is about to close, so the confirm
- * can name the tabs instead of only counting them. Grouped by why.
+ * A one-line-per-tab summary of what Vacuum may close, grouped by reason.
+ * The popup uses it after revalidation to identify tabs actually closed or skipped.
  *
  * @returns {Array<{id: number, url: string, title: string, why: string}>}
  */

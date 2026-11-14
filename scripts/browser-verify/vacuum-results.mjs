@@ -1,5 +1,5 @@
 /**
- * Verifies the Vacuum confirm in a real browser.
+ * Verifies one-click Vacuum and its results in a real browser.
  *
  * Throw-away profile only, per CLAUDE.md ("Never point an automated run at the
  * real profile"), and a local http server rather than the internet — the
@@ -114,29 +114,24 @@ const popup = await ctx.newPage();
 await popup.goto(`chrome-extension://${me.id}/src/popup/popup.html`);
 
 const vacuum = popup.locator('#vacuum');
-console.log('\nlabel before arming :', JSON.stringify((await vacuum.textContent()).trim()));
-
-await vacuum.click();
-await popup.waitForTimeout(800);
-
-console.log('label armed         :', JSON.stringify((await vacuum.textContent()).trim()));
-console.log('list visible        :', await popup.locator('#vacuum-list').isVisible());
-
-const rows = await popup.locator('#vacuum-list li').allTextContents();
-console.log('confirm lists:');
-for (const r of rows) console.log('   •', r.trim());
-
-await popup.screenshot({ path: join(OUT, 'armed.png'), fullPage: true });
-
-// --- did any decoy get listed? --------------------------------------------
-const FORBIDDEN = ['Fix 404', 'Server Error', 'Order #A1234', 'Sign in', 'Only Copy'];
-const leaked = FORBIDDEN.filter((f) => rows.some((r) => r.includes(f)));
-console.log('\ndecoys in the confirm:', leaked.length ? leaked : 'none  ✅');
-
-// --- fire it ---------------------------------------------------------------
 const titlesBefore = await Promise.all(ctx.pages().map((p) => p.title().catch(() => '?')));
 await vacuum.click();
-await popup.waitForTimeout(1500);
+await popup.waitForFunction(() =>
+  document.querySelector('#status').textContent.startsWith('Vacuum complete:'),
+);
+await popup.locator('#results:not(.hidden)').waitFor();
+
+const status = (await popup.locator('#status').textContent()).trim();
+const reportedClosed = Number(status.match(/closed (\d+) tabs?/)[1]);
+const rows = await popup.locator('#vacuum-outcome-list li').allTextContents();
+console.log('\nstatus:', status);
+console.log('results visible:', await popup.locator('#results').isVisible());
+console.log('outcome rows:');
+for (const row of rows) console.log('   ', row.trim());
+await popup.screenshot({ path: join(OUT, 'vacuum-results.png'), fullPage: true });
+
+// --- verify the actual outcome --------------------------------------------
+const FORBIDDEN = ['Fix 404', 'Server Error', 'Order #A1234', 'Sign in', 'Only Copy'];
 const titlesAfter = await Promise.all(ctx.pages().map((p) => p.title().catch(() => '?')));
 
 console.log('\ntabs before:', titlesBefore.length, '| after:', titlesAfter.length);
@@ -144,7 +139,24 @@ console.log('survivors:');
 for (const t of titlesAfter) console.log('   -', t);
 
 const survived = FORBIDDEN.filter((f) => titlesAfter.some((t) => t.includes(f)));
-console.log('\ndecoys that survived the close:', survived.length, 'of', FORBIDDEN.length);
+if (survived.length !== FORBIDDEN.length) {
+  throw new Error(`expected all decoys to survive, got ${survived.length}/${FORBIDDEN.length}`);
+}
+const closedRows = rows.filter((row) => row.startsWith('Closed:'));
+if (closedRows.length !== reportedClosed) {
+  throw new Error(`expected ${reportedClosed} closed-tab rows, got ${closedRows.length}`);
+}
+if (!closedRows.some((row) => row.includes('duplicate'))) {
+  throw new Error('the closed-tab list does not identify a duplicate');
+}
+if (titlesAfter.filter((title) => title === 'Interesting Article').length !== 1) {
+  throw new Error('Vacuum did not leave exactly one duplicate copy open');
+}
+if (titlesBefore.length - titlesAfter.length !== reportedClosed) {
+  throw new Error(
+    `reported ${reportedClosed} closed tabs, but tab count changed by ${titlesBefore.length - titlesAfter.length}`,
+  );
+}
 
 await ctx.close();
 server.close();

@@ -98,9 +98,12 @@ test('the manifest asks for tabs, and tabGroups only optionally', () => {
   // instead of "group 1". Per-group deduplication reads tab.groupId, which
   // needs no permission, so declining costs nothing but labels.
   //
+  // `contextMenus` is required to provide the right-click context menu on the
+  // extension icon for triggering vacuum without opening the popup.
+  //
   // What still matters is that nothing ELSE creeps in: host permissions and
   // content scripts are what turn a tab lister into a page reader.
-  assert.deepEqual(manifest.permissions, ['tabs']);
+  assert.deepEqual(manifest.permissions, ['tabs', 'contextMenus']);
   assert.deepEqual(manifest.optional_permissions, ['tabGroups']);
   assert.equal(manifest.host_permissions, undefined);
   assert.equal(manifest.content_scripts, undefined);

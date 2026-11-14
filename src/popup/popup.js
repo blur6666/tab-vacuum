@@ -10,8 +10,7 @@
 import { queryAllTabs, openReviewPage } from '../lib/chrome-tabs.js';
 import { hasTabsPermission, requestTabsPermission } from '../lib/permissions.js';
 import { planCleanup, MissingTabsPermissionError } from '../lib/scan.js';
-import { planVacuum, vacuumPreview } from '../lib/vacuum.js';
-import { closeTabs } from '../lib/execute.js';
+import { planVacuum } from '../lib/vacuum.js';
 import { planToMarkdown, prettyUrl } from '../lib/format.js';
 import { DEBUG_LOG_SCANNED_TABS } from '../lib/config.js';
 
@@ -72,7 +71,17 @@ helpBtn?.addEventListener('blur', () => {
 hasTabsPermission().then(async (granted) => {
   if (!granted) return;
   try {
-    await refreshVacuumState();
+    const state = await chrome.runtime.sendMessage({ type: 'vacuum-state' });
+    if (state.status === 'running') {
+      scanButton.disabled = true;
+      vacuumButton.disabled = true;
+      setStatus('Scanning and vacuuming…');
+      await waitForVacuum();
+    } else if (state.status === 'complete' || state.status === 'error') {
+      await showVacuumState(state);
+    } else {
+      await refreshVacuumState();
+    }
   } catch { }
 });
 
@@ -92,39 +101,17 @@ scanButton.addEventListener('click', () => {
 });
 
 vacuumButton.addEventListener('click', async () => {
-  const granted = await requestTabsPermission();
-  if (!granted) {
-    denied();
-    return;
-  }
-
   scanButton.disabled = true;
   vacuumButton.disabled = true;
   clearVacuumOutcome();
   setStatus('Scanning and vacuuming…');
 
   try {
-    const tabs = await queryAllTabs();
-    if (DEBUG_LOG_SCANNED_TABS) {
-      console.log(`Vacuum scan: ${tabs.length} tabs`, tabs);
-    }
-    const result = planVacuum(tabs);
-
-    if (result.totalClosable === 0) {
-      render(result.plan);
-      setStatus('No tabs to clean up.');
-      vacuumButton.disabled = true;
+    if (!await requestTabsPermission()) {
+      denied();
       return;
     }
-
-    const plannedRows = new Map(vacuumPreview(result.plan).map((row) => [row.id, row]));
-    const outcome = await closeTabs(result.plan, result.closableIds);
-    await scan();
-    renderVacuumOutcome(outcome, plannedRows);
-    setStatus(
-      `Vacuum complete: closed ${outcome.closed} tab${outcome.closed === 1 ? '' : 's'}; ` +
-        `skipped ${outcome.skipped.length}.`,
-    );
+    await showVacuumState(await chrome.runtime.sendMessage({ type: 'vacuum-start' }));
   } catch (error) {
     showError(error);
     vacuumButton.disabled = false;
@@ -132,6 +119,37 @@ vacuumButton.addEventListener('click', async () => {
     scanButton.disabled = false;
   }
 });
+
+async function waitForVacuum() {
+  let state;
+  do {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    state = await chrome.runtime.sendMessage({ type: 'vacuum-state' });
+  } while (state.status === 'running');
+  await showVacuumState(state);
+}
+
+async function showVacuumState(state) {
+  scanButton.disabled = false;
+  if (state.status === 'error') {
+    showError(new Error(state.error));
+    vacuumButton.disabled = false;
+    return;
+  }
+  if (state.status !== 'complete') return;
+  const { outcome, rows } = state;
+  // Refresh failure must never hide the successful deletion report.
+  try {
+    await scan();
+  } catch (error) {
+    console.warn('Could not refresh scan after Vacuum', error);
+    vacuumButton.disabled = false;
+  }
+  renderVacuumOutcome(outcome, new Map(rows.map((row) => [row.id, row])));
+  setStatus(rows.length === 0 ? 'No tabs to clean up.' :
+    `Vacuum complete: closed ${outcome.closed} tab${outcome.closed === 1 ? '' : 's'}; ` +
+    `skipped ${outcome.skipped.length}.`);
+}
 
 async function refreshVacuumState() {
   const tabs = await queryAllTabs();

@@ -5,6 +5,7 @@ The script loads the extension unpacked in a real Chromium and drives the popup.
 | Script | Checks |
 | --- | --- |
 | `vacuum-results.mjs` | One click closes only candidates, lists the tabs closed or skipped, and shows the refreshed report. |
+| `action-popup.mjs` | Opens the real toolbar popup in a visible throw-away browser, removes its active new-tab page, and verifies the restored popup expands with completed results. Uses CDP over Playwright's pipe because toolbar popups are not exposed as Playwright pages. |
 
 ## Running them
 

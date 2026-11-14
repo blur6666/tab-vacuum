@@ -47,7 +47,7 @@ When a run covers several tasks, that is several commits, each holding one task'
 - `src/lib/url.js` and `src/lib/scan.js` never touch the `chrome` global — pure functions, so `node --test` imports them with no browser and no mock.
 - `src/lib/chrome-tabs.js` is the only file that may call `chrome.tabs` or `chrome.tabGroups` — one auditable choke point, enforced by `test/guards.test.js`.
 - `src/lib/execute.js` decides *whether* a tab may close; `chrome-tabs.js` performs it. `closeTabs()` takes `closer` and `snapshot` as injected options so the policy is testable with no browser — `test/execute.test.js` passes fakes.
-- No service worker, no shared state: the review page re-runs the scan on load instead of receiving a snapshot. Nothing to go stale.
+- A service worker runs popup Vacuum to completion and temporarily holds its result in memory. If cleanup closes the active tab, it reopens the toolbar popup with that result. No storage or saved history. The review page still re-runs its scan on load.
 - No build step, no runtime dependencies, no framework.
 
 ## Lessons learned

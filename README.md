@@ -6,7 +6,7 @@ A Chromium extension that finds junk tabs across all your windows: new-tab pages
 
 ## Install (unpacked)
 
-Built for **Brave**. Open `brave://extensions` → **Developer mode** → **Load unpacked** → this repository's root folder.
+Built for **Brave** (Chromium 127 or later). Open `brave://extensions` → **Developer mode** → **Load unpacked** → this repository's root folder.
 
 It asks for one permission, `tabs`, which your browser calls *"Read your browsing history"*. To see what it actually got: **Details** on the card → **Permissions**. Expect that one entry and no host permissions. Loading unpacked never shows an install dialog, so the Details page is the only real check.
 
@@ -20,7 +20,7 @@ That warning is broader than what the extension does, and the naming is genuinel
 
 ## Using the extension
 
-Open the extension from the toolbar. **Scan my tabs** reads every tab in every normal browser window using the same profile as you and produces the results below. Nothing runs in the background; a scan happens only when you click **Scan my tabs** or **Vacuum 'em all!**.
+Open the extension from the toolbar. **Scan my tabs** reads every tab in every normal browser window using the same profile as you and produces the results below. Cleanup runs in a short-lived background worker only when you click **Vacuum 'em all!**, so closing the active tab cannot interrupt it.
 
 Once results are showing, that same button reads **Scan again** — pressing it re-runs the scan in place. **Review & clean →** is the one that moves you to the report.
 
@@ -98,7 +98,7 @@ A duplicate is protected — ⚠, greyed, checkbox disabled — when it is **pin
 
 ## What it does not do
 
-- **No persistence.** No `storage` permission, no history between runs, no service worker holding state. The review page re-runs the scan on load rather than receiving a snapshot.
+- **No persistence.** No `storage` permission or saved history. A service worker holds the latest Vacuum result in memory until it stops, so the popup can recover its feedback when cleanup removes the active tab. The review page re-runs the scan on load rather than receiving a snapshot.
 - **No network access.** Nothing is sent anywhere — no usage data, no telemetry.
 - **No page access.** No host permissions and no content scripts, so it cannot read or change the contents of any page.
 
@@ -182,6 +182,6 @@ Two gotchas that cost real time:
 
 Two rules for any scripted run: a throw-away `--user-data-dir`, never your real profile, and never `taskkill` a browser process — close the context through Playwright's API.
 
-The popup closes when it loses focus, which makes its console hard to reach; right-click the popup → **Inspect** pins it open. **⧉ Copy report** puts the whole scan on the clipboard as markdown — that is the artifact to bring back for tuning. It lists your real URLs and titles, so it is yours to read, not something to paste anywhere.
+If Vacuum removes the active browser tab, Chromium dismisses the toolbar popup; the worker automatically reopens it with the completed results. The popup otherwise closes when it loses focus, which makes its console hard to reach; right-click the popup → **Inspect** pins it open. **⧉ Copy report** puts the whole scan on the clipboard as markdown — that is the artifact to bring back for tuning. It lists your real URLs and titles, so it is yours to read, not something to paste anywhere.
 
 Decision logic lives in `src/lib/url.js` and `src/lib/scan.js` as pure functions over plain `Tab`-shaped objects, which is why `node --test` can import them without a browser. Tunables — heuristics, thresholds, protections, normalisation flags — are in `src/lib/config.js`. Architecture rules are in CLAUDE.md.

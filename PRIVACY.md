@@ -21,7 +21,7 @@ This requires the `tabs` permission, which Chrome describes as *"Read your brows
 
 It is held in memory for the duration of the scan and used to render the results on screen. It is never written to disk, never placed in browser storage, never logged, and never sent anywhere.
 
-The extension declares no `storage` permission, so it cannot persist anything between runs. It has no background service worker and keeps no state — the review page re-runs the scan when it loads rather than receiving a saved copy. Closing the popup or the review page discards everything.
+The extension declares no `storage` permission and saves no tab history to disk. A background service worker performs cleanup and temporarily holds the latest result in memory, including the titles and URLs of closed or skipped tabs, so the popup can show feedback even when cleanup closes the active tab. This result disappears when the worker stops or the extension reloads. The review page re-runs its scan when it loads rather than receiving a saved copy.
 
 ## Network access
 

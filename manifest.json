@@ -3,7 +3,11 @@
   "name": "Tab Vacuum",
   "version": "0.1.0",
   "description": "Find unused new-tab pages and duplicate tabs across all your windows and clean them.",
-  "minimum_chrome_version": "116",
+  "minimum_chrome_version": "127",
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
   "permissions": ["tabs"],
   "optional_permissions": ["tabGroups"],
   "icons": {

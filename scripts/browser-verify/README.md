@@ -23,5 +23,5 @@ Nothing here runs during `npm test`. `node --test` only discovers files under `t
 - **Throw-away profile, always.** Both scripts `mkdtemp` a fresh `--user-data-dir`. Never point them at a real profile — they close tabs, and CLAUDE.md says so twice.
 - **`TABVAC_CHROME`** overrides the browser binary. The default is Playwright's bundled Chromium at `/opt/pw-browsers/chromium/chrome-linux/chrome`; set the variable when yours lives elsewhere, or when the bundled build does not match the installed Playwright.
 - **No network.** Pages are served from a local `http` server on loopback, because duplicate detection only accepts `http:`/`https:` and `data:` URLs cannot stand in.
-- **Finding the extension id** reads `chrome://extensions-internals/` and matches `name === 'Tab Vacuum'`. Do not take the first id in that dump — Edge ships built-in extensions that appear first. The scripts used to match two names, because the manifest said `Tab Vacuum` while the UI said `Tab Cleanup`; that drift is gone.
+- **Finding the extension id** reads `chrome://extensions-internals/` and matches the name loaded from `manifest.json`. Do not take the first id in that dump — Edge ships built-in extensions that appear first.
 - Screenshots land in `tmp/`, which is gitignored.

@@ -8,14 +8,13 @@
  */
 import { createServer } from 'node:http';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-
 import { dirname, join } from 'node:path';
-import { mkdirSync } from 'node:fs';
 
 // Repo root, so the script runs from anywhere.
 const REPO = dirname(dirname(import.meta.dirname));
+const MANIFEST = JSON.parse(readFileSync(join(REPO, 'manifest.json'), 'utf8'));
 // Playwright's bundled chromium moves with its version; override when needed.
 const CHROME = process.env.TABVAC_CHROME ?? '/opt/pw-browsers/chromium/chrome-linux/chrome';
 // tmp/ is gitignored.
@@ -71,96 +70,103 @@ console.log('local server:', BASE);
 const PROFILE = mkdtempSync(join(tmpdir(), 'tabvac-throwaway-'));
 console.log('throw-away profile:', PROFILE);
 
-const ctx = await chromium.launchPersistentContext(PROFILE, {
-  executablePath: CHROME,
-  headless: true,
-  viewport: null,
-  args: [
-    `--disable-extensions-except=${REPO}`,
-    `--load-extension=${REPO}`,
-    '--no-proxy-server', // everything under test is on loopback
-  ],
-});
+let ctx;
+try {
+  ctx = await chromium.launchPersistentContext(PROFILE, {
+    executablePath: CHROME,
+    headless: true,
+    viewport: null,
+    args: [
+      `--disable-extensions-except=${REPO}`,
+      `--load-extension=${REPO}`,
+      '--no-proxy-server', // everything under test is on loopback
+    ],
+  });
 
-const probe = await ctx.newPage();
-await probe.goto('chrome://extensions-internals/');
-const parsed = JSON.parse(await probe.evaluate(() => document.body.innerText));
-const me = parsed.find((e) => e.name === 'Tab Vacuum');
-if (!me) throw new Error(`extension not loaded; saw ${parsed.map((e) => e.name)}`);
-console.log('extension id:', me.id, '| manifest name:', me.name);
+  const probe = await ctx.newPage();
+  await probe.goto('chrome://extensions-internals/');
+  const parsed = JSON.parse(await probe.evaluate(() => document.body.innerText));
+  const me = parsed.find((entry) => entry.name === MANIFEST.name);
+  if (!me) throw new Error(`extension not loaded; saw ${parsed.map((entry) => entry.name)}`);
+  console.log('extension id:', me.id, '| manifest name:', me.name);
 
-async function open(url) {
-  const p = await ctx.newPage();
-  await p.goto(url, { waitUntil: 'load' });
-  return p;
-}
+  async function open(url) {
+    const p = await ctx.newPage();
+    await p.goto(url, { waitUntil: 'load' });
+    return p;
+  }
 
-// Junk it SHOULD take
-await open('chrome://newtab/');
-await open('chrome://settings/');
-// A genuine duplicate pair
-await open(`${BASE}/article`);
-await open(`${BASE}/article`);
-// Things it MUST NOT take
-await open(`${BASE}/unique`);
-await open(`${BASE}/issues/12`);
-await open(`${BASE}/news`);
-await open(`${BASE}/checkout/complete`);
-await open(`${BASE}/login`);
+  // Junk it SHOULD take
+  await open('chrome://newtab/');
+  await open('chrome://settings/');
+  // A genuine duplicate pair
+  await open(`${BASE}/article`);
+  await open(`${BASE}/article`);
+  // Things it MUST NOT take
+  await open(`${BASE}/unique`);
+  await open(`${BASE}/issues/12`);
+  await open(`${BASE}/news`);
+  await open(`${BASE}/checkout/complete`);
+  await open(`${BASE}/login`);
 
-await probe.close();
+  await probe.close();
 
-// --- drive the popup -------------------------------------------------------
-const popup = await ctx.newPage();
-await popup.goto(`chrome-extension://${me.id}/src/popup/popup.html`);
+  // --- drive the popup -----------------------------------------------------
+  const popup = await ctx.newPage();
+  await popup.goto(`chrome-extension://${me.id}/src/popup/popup.html`);
 
-const vacuum = popup.locator('#vacuum');
-const titlesBefore = await Promise.all(ctx.pages().map((p) => p.title().catch(() => '?')));
-await popup.locator('#scan').click();
-await popup.locator('#results:not(.hidden)').waitFor();
-await vacuum.click();
-await popup.waitForFunction(() =>
-  document.querySelector('#status').textContent.startsWith('Vacuum complete:'),
-);
-assert.equal(await popup.locator('#results').isVisible(), false, 'Vacuum hides an earlier scan report');
-await popup.locator('#vacuum-outcome:not(.hidden)').waitFor();
-
-const status = (await popup.locator('#status').textContent()).trim();
-const reportedClosed = Number(status.match(/closed (\d+) tabs?/)[1]);
-const rows = await popup.locator('#vacuum-outcome-list li').allTextContents();
-console.log('\nstatus:', status);
-console.log('results visible:', await popup.locator('#results').isVisible());
-console.log('outcome rows:');
-for (const row of rows) console.log('   ', row.trim());
-await popup.screenshot({ path: join(OUT, 'vacuum-results.png'), fullPage: true });
-
-// --- verify the actual outcome --------------------------------------------
-const FORBIDDEN = ['Fix 404', 'Server Error', 'Order #A1234', 'Sign in', 'Only Copy'];
-const titlesAfter = await Promise.all(ctx.pages().map((p) => p.title().catch(() => '?')));
-
-console.log('\ntabs before:', titlesBefore.length, '| after:', titlesAfter.length);
-console.log('survivors:');
-for (const t of titlesAfter) console.log('   -', t);
-
-const survived = FORBIDDEN.filter((f) => titlesAfter.some((t) => t.includes(f)));
-if (survived.length !== FORBIDDEN.length) {
-  throw new Error(`expected all decoys to survive, got ${survived.length}/${FORBIDDEN.length}`);
-}
-const closedRows = rows.filter((row) => row.startsWith('Closed:'));
-if (closedRows.length !== reportedClosed) {
-  throw new Error(`expected ${reportedClosed} closed-tab rows, got ${closedRows.length}`);
-}
-if (!closedRows.some((row) => row.includes('duplicate'))) {
-  throw new Error('the closed-tab list does not identify a duplicate');
-}
-if (titlesAfter.filter((title) => title === 'Interesting Article').length !== 1) {
-  throw new Error('Vacuum did not leave exactly one duplicate copy open');
-}
-if (titlesBefore.length - titlesAfter.length !== reportedClosed) {
-  throw new Error(
-    `reported ${reportedClosed} closed tabs, but tab count changed by ${titlesBefore.length - titlesAfter.length}`,
+  const vacuum = popup.locator('#vacuum');
+  const titlesBefore = await Promise.all(ctx.pages().map((p) => p.title().catch(() => '?')));
+  await popup.locator('#scan').click();
+  await popup.locator('#results:not(.hidden)').waitFor();
+  await vacuum.click();
+  await popup.waitForFunction(() =>
+    document.querySelector('#status').textContent.startsWith('Vacuum complete:'),
   );
-}
+  assert.equal(await popup.locator('#results').isVisible(), false, 'Vacuum hides an earlier scan report');
+  await popup.locator('#vacuum-outcome:not(.hidden)').waitFor();
 
-await ctx.close();
-server.close();
+  const status = (await popup.locator('#status').textContent()).trim();
+  const reportedClosed = Number(status.match(/closed (\d+) tabs?/)[1]);
+  const rows = await popup.locator('#vacuum-outcome-list li').allTextContents();
+  console.log('\nstatus:', status);
+  console.log('results visible:', await popup.locator('#results').isVisible());
+  console.log('outcome rows:');
+  for (const row of rows) console.log('   ', row.trim());
+  await popup.screenshot({ path: join(OUT, 'vacuum-results.png'), fullPage: true });
+
+  // --- verify the actual outcome ------------------------------------------
+  const FORBIDDEN = ['Fix 404', 'Server Error', 'Order #A1234', 'Sign in', 'Only Copy'];
+  const titlesAfter = await Promise.all(ctx.pages().map((p) => p.title().catch(() => '?')));
+
+  console.log('\ntabs before:', titlesBefore.length, '| after:', titlesAfter.length);
+  console.log('survivors:');
+  for (const title of titlesAfter) console.log('   -', title);
+
+  const survived = FORBIDDEN.filter((forbidden) =>
+    titlesAfter.some((title) => title.includes(forbidden)),
+  );
+  if (survived.length !== FORBIDDEN.length) {
+    throw new Error(`expected all decoys to survive, got ${survived.length}/${FORBIDDEN.length}`);
+  }
+  const closedRows = rows.filter((row) => row.startsWith('Closed:'));
+  if (closedRows.length !== reportedClosed) {
+    throw new Error(`expected ${reportedClosed} closed-tab rows, got ${closedRows.length}`);
+  }
+  if (!closedRows.some((row) => row.includes('duplicate'))) {
+    throw new Error('the closed-tab list does not identify a duplicate');
+  }
+  if (titlesAfter.filter((title) => title === 'Interesting Article').length !== 1) {
+    throw new Error('Vacuum did not leave exactly one duplicate copy open');
+  }
+  if (titlesBefore.length - titlesAfter.length !== reportedClosed) {
+    throw new Error(
+      `reported ${reportedClosed} closed tabs, but tab count changed by ${titlesBefore.length - titlesAfter.length}`,
+    );
+  }
+} finally {
+  const closeServer = new Promise((resolve, reject) => {
+    server.close((error) => error ? reject(error) : resolve());
+  });
+  await Promise.all([ctx?.close(), closeServer]);
+}

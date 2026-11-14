@@ -35,6 +35,7 @@ const protectedList = $('protected-list');
 const openReview = $('open-review');
 const copyButton = $('copy');
 const helpBtn = $('help-btn');
+const helpPopover = $('help-popover');
 
 let lastPlan = null;
 
@@ -46,26 +47,20 @@ vacuumButton.textContent = VACUUM;
 vacuumButton.title = VACUUM_TOOLTIP;
 vacuumButton.setAttribute('aria-label', `Vacuum 'em all: ${VACUUM_TOOLTIP.toLowerCase()}`);
 
-// The popover is hover-only by default (:hover/:focus-within in CSS); these
-// keep aria-expanded honest for anyone using a screen reader, which does not
-// otherwise learn that hovering revealed content.
-helpBtn?.addEventListener('mouseenter', () => {
-  helpBtn.setAttribute('aria-expanded', 'true');
-});
+// Match the accessibility state to the same hover/focus state that reveals
+// the tooltip visually, and associate its text only while it is available.
+function syncHelpVisibility() {
+  const visible = helpBtn.parentElement.matches(':hover, :focus-within');
+  helpBtn.setAttribute('aria-expanded', String(visible));
+  helpPopover.setAttribute('aria-hidden', String(!visible));
+  if (visible) helpBtn.setAttribute('aria-describedby', helpPopover.id);
+  else helpBtn.removeAttribute('aria-describedby');
+}
 
-helpBtn?.addEventListener('mouseleave', () => {
-  if (document.activeElement !== helpBtn) {
-    helpBtn.setAttribute('aria-expanded', 'false');
-  }
-});
-
-helpBtn?.addEventListener('focus', () => {
-  helpBtn.setAttribute('aria-expanded', 'true');
-});
-
-helpBtn?.addEventListener('blur', () => {
-  helpBtn.setAttribute('aria-expanded', 'false');
-});
+helpBtn?.addEventListener('mouseenter', syncHelpVisibility);
+helpBtn?.addEventListener('mouseleave', syncHelpVisibility);
+helpBtn?.addEventListener('focus', syncHelpVisibility);
+helpBtn?.addEventListener('blur', syncHelpVisibility);
 
 // Initial disabled state, from the same fresh count every other path uses.
 hasTabsPermission().then(async (granted) => {

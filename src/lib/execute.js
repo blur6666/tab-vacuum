@@ -151,6 +151,7 @@ export async function closeTabs(plan, ids, options = {}) {
     else confirmed.push(id);
   }
 
+  preserveDuplicateCopies(plan, confirmed, skipped, live, plannedUrls);
   preserveLastTabs(confirmed, skipped, liveList, duplicateIds);
 
   if (confirmed.length === 0) return { closed: 0, closedIds: [], skipped };
@@ -177,6 +178,27 @@ function staleReason(tab, plannedUrl, id, selfTabId, isDuplicate = false, tabsPe
   }
 
   return null;
+}
+
+/**
+ * A stale plan may outlive its suggested keeper. Recheck every planned
+ * duplicate group as a set so at least one still-matching copy survives.
+ */
+function preserveDuplicateCopies(plan, confirmed, skipped, live, plannedUrls) {
+  const confirmedSet = new Set(confirmed);
+
+  for (const group of plan.duplicateGroups ?? []) {
+    const liveCopies = group.tabs.filter((planned) => {
+      const current = live.get(planned.id);
+      return current !== undefined && (current.url ?? '') === plannedUrls.get(planned.id);
+    });
+    if (liveCopies.length === 0 || !liveCopies.every((tab) => confirmedSet.has(tab.id))) continue;
+
+    const reserved = liveCopies[0];
+    confirmed.splice(confirmed.indexOf(reserved.id), 1);
+    confirmedSet.delete(reserved.id);
+    skipped.push({ id: reserved.id, reason: 'would be last duplicate copy' });
+  }
 }
 
 /**

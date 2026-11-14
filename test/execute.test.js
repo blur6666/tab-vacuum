@@ -148,6 +148,24 @@ test('a keeper is closable by hand but never part of the bulk selection', () => 
   assert.deepEqual(bulkSelection(plan), [other.id], 'Kill Em All leaves one copy');
 });
 
+test('a stale duplicate plan keeps the last copy when its keeper is gone', async () => {
+  const keeper = tab({ url: 'https://example.com/stale', index: 0, active: true });
+  const copy = tab({ url: 'https://example.com/stale', index: 1 });
+  const plan = planCleanup([keeper, copy]);
+  const closer = spyCloser();
+
+  const result = await closeTabs(plan, bulkSelection(plan), {
+    closer,
+    snapshot: unchanged([copy]),
+  });
+
+  assert.equal(result.closed, 0);
+  assert.deepEqual(result.skipped, [
+    { id: copy.id, reason: 'would be last duplicate copy' },
+  ]);
+  assert.deepEqual(closer.calls, []);
+});
+
 test('bulk selection takes unused new tabs and skips protected duplicates', () => {
   const junk = tab({ url: 'chrome://newtab/' });
   const keeper = tab({ url: 'https://example.com/b', index: 0 });

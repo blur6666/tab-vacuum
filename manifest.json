@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tab Vacuum! One click. Tab clutter gone.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Find unused new-tab pages and duplicate tabs across all your windows, then clean them up.",
   "minimum_chrome_version": "127",
   "permissions": ["tabs"],

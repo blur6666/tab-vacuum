@@ -4,7 +4,7 @@
  * Provides:
  * 1. "Scan my tabs" / "Scan again" -> Scans and shows breakdown, with link to Review page.
  * 2. "Vacuum 'em all!" -> One-click scan & delete; then shows the tabs closed
- *    or skipped and refreshes the report.
+ *    or skipped, without showing the scan breakdown.
  */
 
 import { queryAllTabs, openReviewPage } from '../lib/chrome-tabs.js';
@@ -104,6 +104,7 @@ vacuumButton.addEventListener('click', async () => {
   scanButton.disabled = true;
   vacuumButton.disabled = true;
   clearVacuumOutcome();
+  results.classList.toggle('hidden', true);
   setStatus('Scanning and vacuuming…');
 
   try {
@@ -138,9 +139,10 @@ async function showVacuumState(state) {
   }
   if (state.status !== 'complete') return;
   const { outcome, rows } = state;
-  // Refresh failure must never hide the successful deletion report.
+  results.classList.toggle('hidden', true);
+  // Refresh only the button state; the scan breakdown belongs to Scan.
   try {
-    await scan();
+    await refreshVacuumState();
   } catch (error) {
     console.warn('Could not refresh scan after Vacuum', error);
     vacuumButton.disabled = false;

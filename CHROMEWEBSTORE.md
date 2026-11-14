@@ -16,7 +16,7 @@ Tab Vacuum helps you quickly find and clean up tab clutter across all open windo
 Key Features:
 - Safe Tab Inspection: Scan all open windows to view duplicate tabs, unused blank new-tab pages, and browser system pages without closing anything.
 - Intelligent Deduplication: Duplicate tabs are detected and grouped across windows while respecting tab groups and keeping the most relevant tab in each group.
-- Vacuum 'em all! One-Click Cleanup: Immediately close unused new tabs, system tabs, and duplicate non-keepers across all windows, then see the tabs closed or skipped alongside a refreshed scan.
+- Vacuum 'em all! One-Click Cleanup: Immediately close unused new tabs, system tabs, and duplicate non-keepers across all windows, then see the tabs closed or skipped without the scan breakdown.
 - Interactive Review: Open a dedicated review page to inspect tabs one by one, filter by deletion candidates, or select specific groups. Review-page close actions use a two-click confirmation.
 - Multi-Layer Protection: Pinned tabs, tabs playing audio, grouped tabs, and sole tabs in windows are automatically protected and flagged with clear warnings.
 - 100% Private & Local: No network requests, no remote scripts, no saved tab history, and no data tracking. A background worker completes cleanup and restores the results popup if the active tab was removed.
@@ -24,7 +24,7 @@ Key Features:
 How to Use:
 1. Click the Tab Vacuum icon in your toolbar to open the popup.
 2. Click "Scan my tabs" to inspect your open tabs and see a breakdown of duplicates, unused new tabs, and system pages.
-3. Click "Review & clean →" to manage tabs individually and use Kill 'Em All, or click "Vacuum 'em all!" in the popup for immediate one-click cleanup and a refreshed report.
+3. Click "Review & clean →" to manage tabs individually and use Kill 'Em All, or click "Vacuum 'em all!" in the popup for immediate one-click cleanup and a list of closed or skipped tabs.
 
 Safety & Permissions:
 Tab Vacuum requires the "tabs" permission exclusively to read tab URLs and titles for duplicate detection and to close the tabs you choose. Tab Vacuum never inspects page content, stores no history, and sends zero data over the network.
@@ -49,14 +49,14 @@ English
 | Store Icon [REQUIRED] | 128×128 PNG | ✅ Ready | `icon128.png` |
 | Screenshot 1 [REQUIRED] | 1280×800 | ⬜ To capture | Popup overview with scan breakdown and action buttons |
 | Screenshot 2 [RECOMMENDED] | 1280×800 | ⬜ To capture | Detailed review page with grouped duplicates and protections |
-| Screenshot 3 [RECOMMENDED] | 1280×800 | ⬜ To capture | Closed/skipped tab list and refreshed popup report after Vacuum |
+| Screenshot 3 [RECOMMENDED] | 1280×800 | ⬜ To capture | Closed/skipped tab list after Vacuum, with no scan breakdown |
 | Small Promo Tile [RECOMMENDED] | 440×280 | ⬜ Optional | `assets/promo-small.png` |
 | Marquee Promo Tile | 1400×560 | ⬜ Optional | `assets/promo-marquee.png` |
 
 ### Screenshot Notes
 - **Screenshot 1 (Popup View):** Show the clean popup interface showing scanned counts for unused new tabs, system tabs, and duplicates, with the "Vacuum 'em all!" and "Scan my tabs" actions.
 - **Screenshot 2 (Review Page):** Show the full review interface displaying grouped duplicates across windows with keeper stars (★), protected tab notices (⚠), and group color chips.
-- **Screenshot 3 (Vacuum Results):** Show the tabs closed or skipped and the refreshed scan after one-click Vacuum.
+- **Screenshot 3 (Vacuum Results):** Show the tabs closed or skipped after one-click Vacuum, with no scan breakdown.
 
 
 ## Permissions Justification

@@ -77,11 +77,13 @@ try {
   let report;
   const deadline = Date.now() + 10000;
   do {
-    report = await replacement.evaluate(`({ status: document.querySelector('#status')?.textContent, rows: [...document.querySelectorAll('#vacuum-outcome-list li')].map(li=>li.textContent), height: document.body.scrollHeight })`);
+    report = await replacement.evaluate(`({ status: document.querySelector('#status')?.textContent, rows: [...document.querySelectorAll('#vacuum-outcome-list li')].map(li=>li.textContent), height: document.body?.scrollHeight })`);
     if (report.status?.startsWith('Vacuum complete:')) break;
     await new Promise((resolve) => setTimeout(resolve, 50));
   } while (Date.now() < deadline);
   assert.ok(report.status.startsWith('Vacuum complete:'), JSON.stringify(report));
+  assert.equal(await replacement.evaluate("getComputedStyle(document.querySelector('#results')).display"), 'none', 'Vacuum does not show the scan breakdown');
+  assert.equal(await replacement.evaluate("document.querySelector('#scan').textContent"), 'Scan my tabs', 'Vacuum does not turn Scan into Scan again');
   assert.ok(junk.isClosed(), 'active new tab was removed immediately');
   assert.ok(report.rows.some((row) => row.startsWith('Closed:') && row.includes('unused new tab')));
   assert.ok(report.height > initialHeight, 'popup expands to show completed results');
@@ -90,6 +92,13 @@ try {
   const screenshot = await replacement.send('Page.captureScreenshot');
   writeFileSync(join(repo, 'tmp', 'action-popup-results.png'), Buffer.from(screenshot.data, 'base64'));
   console.log(JSON.stringify({ ...report, initialHeight }));
+  await replacement.evaluate("document.querySelector('#scan').click()");
+  const scanDeadline = Date.now() + 10000;
+  while (await replacement.evaluate("getComputedStyle(document.querySelector('#results')).display === 'none'")) {
+    assert.ok(Date.now() < scanDeadline, 'Scan should display its breakdown');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  assert.equal(await replacement.evaluate("getComputedStyle(document.querySelector('#vacuum-outcome')).display"), 'none', 'Scan replaces Vacuum feedback with its report');
 
 } finally {
   await context.close();

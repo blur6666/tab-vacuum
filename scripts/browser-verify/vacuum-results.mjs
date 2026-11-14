@@ -7,6 +7,7 @@
  * real http: scheme, which data: URLs cannot give.
  */
 import { createServer } from 'node:http';
+import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 
@@ -115,11 +116,14 @@ await popup.goto(`chrome-extension://${me.id}/src/popup/popup.html`);
 
 const vacuum = popup.locator('#vacuum');
 const titlesBefore = await Promise.all(ctx.pages().map((p) => p.title().catch(() => '?')));
+await popup.locator('#scan').click();
+await popup.locator('#results:not(.hidden)').waitFor();
 await vacuum.click();
 await popup.waitForFunction(() =>
   document.querySelector('#status').textContent.startsWith('Vacuum complete:'),
 );
-await popup.locator('#results:not(.hidden)').waitFor();
+assert.equal(await popup.locator('#results').isVisible(), false, 'Vacuum hides an earlier scan report');
+await popup.locator('#vacuum-outcome:not(.hidden)').waitFor();
 
 const status = (await popup.locator('#status').textContent()).trim();
 const reportedClosed = Number(status.match(/closed (\d+) tabs?/)[1]);

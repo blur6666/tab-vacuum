@@ -43,8 +43,7 @@ let killIds = null;
 /* ------------------------------------------------------------------ scan */
 
 /**
- * No snapshot is passed from the popup — with no storage permission and no
- * service worker, re-running the scan here is both simpler and always fresh.
+ * No snapshot is passed from the popup; re-running the scan keeps results fresh.
  */
 async function load() {
   status.textContent = 'Scanning…';
@@ -515,26 +514,22 @@ groupNamesButton.addEventListener('click', () => {
 
 /* ----------------------------------------------------------------- chrome */
 
-rescanHandlers();
+$('rescan').addEventListener('click', () => {
+  // `tabs` is required, so this never prompts — it re-checks in case the
+  // permission was revoked from the Details page while this tab sat open.
+  hasTabsPermission()
+    .then((ok) => (ok ? load() : needsPermission()))
+    .catch(showError);
+});
 
-function rescanHandlers() {
-  $('rescan').addEventListener('click', () => {
-    // `tabs` is required, so this never prompts — it re-checks in case the
-    // permission was revoked from the Details page while this tab sat open.
-    hasTabsPermission()
-      .then((ok) => (ok ? load() : needsPermission()))
-      .catch(showError);
-  });
-
-  $('copy').addEventListener('click', async () => {
-    if (!lastPlan) return;
-    await navigator.clipboard.writeText(planToMarkdown(lastPlan));
-    $('copy').textContent = '✓ Copied';
-    setTimeout(() => {
-      $('copy').textContent = '⧉ Copy report';
-    }, 1500);
-  });
-}
+$('copy').addEventListener('click', async () => {
+  if (!lastPlan) return;
+  await navigator.clipboard.writeText(planToMarkdown(lastPlan));
+  $('copy').textContent = '✓ Copied';
+  setTimeout(() => {
+    $('copy').textContent = '⧉ Copy report';
+  }, 1500);
+});
 
 /** Every tab the plan reports, whatever section it lands in. */
 function everyReportedTab(plan) {

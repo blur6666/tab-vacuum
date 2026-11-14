@@ -5,7 +5,6 @@ The script loads the extension unpacked in a real Chromium and drives the popup.
 | Script | Checks |
 | --- | --- |
 | `vacuum-results.mjs` | One click closes only candidates, lists the tabs closed or skipped, and hides any earlier scan report. |
-| `action-popup.mjs` | Opens the real toolbar popup in a visible throw-away browser, removes its active new-tab page, and verifies the restored popup expands with completed results. Uses CDP over Playwright's pipe because toolbar popups are not exposed as Playwright pages. |
 
 ## Running them
 
@@ -20,7 +19,7 @@ Nothing here runs during `npm test`. `node --test` only discovers files under `t
 
 ## Notes
 
-- **Throw-away profile, always.** Both scripts `mkdtemp` a fresh `--user-data-dir`. Never point them at a real profile — they close tabs, and CLAUDE.md says so twice.
+- **Throw-away profile, always.** The script uses `mkdtemp` to create a fresh `--user-data-dir`. Never point them at a real profile — they close tabs, and CLAUDE.md says so twice.
 - **`TABVAC_CHROME`** overrides the browser binary. The default is Playwright's bundled Chromium at `/opt/pw-browsers/chromium/chrome-linux/chrome`; set the variable when yours lives elsewhere, or when the bundled build does not match the installed Playwright.
 - **No network.** Pages are served from a local `http` server on loopback, because duplicate detection only accepts `http:`/`https:` and `data:` URLs cannot stand in.
 - **Finding the extension id** reads `chrome://extensions-internals/` and matches the name loaded from `manifest.json`. Do not take the first id in that dump — Edge ships built-in extensions that appear first.

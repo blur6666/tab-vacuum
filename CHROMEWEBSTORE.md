@@ -19,7 +19,7 @@ Key Features:
 - Vacuum 'em all! One-Click Cleanup: Immediately close unused new tabs, system tabs, and duplicate non-keepers across all windows, then see the tabs closed or skipped without the scan breakdown.
 - Interactive Review: Open a dedicated review page to inspect tabs one by one, filter by deletion candidates, or select specific groups. Review-page close actions use a two-click confirmation.
 - Multi-Layer Protection: Pinned tabs, tabs playing audio, grouped tabs, and sole tabs in windows are automatically protected and flagged with clear warnings.
-- 100% Private & Local: No network requests, no remote scripts, no saved tab history, and no data tracking. A background worker completes cleanup and restores the results popup if the active tab was removed.
+- 100% Private & Local: No network requests, no remote scripts, no saved tab history, and no data tracking.
 
 How to Use:
 1. Click the Tab Vacuum icon in your toolbar to open the popup.
@@ -131,4 +131,4 @@ https://github.com/blur6666/browser-extensions-tab-vacuum
 ## Review Notes
 
 ### Known Issues / Limitations
-- None. Manifest V3 compliant, local cleanup worker, no persistent tab history, minimal permissions.
+- None. Manifest V3 compliant, local cleanup, no persistent tab history, minimal permissions.

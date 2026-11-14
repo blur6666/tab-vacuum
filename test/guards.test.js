@@ -104,7 +104,6 @@ test('the manifest asks for tabs, and tabGroups only optionally', () => {
   assert.deepEqual(manifest.optional_permissions, ['tabGroups']);
   assert.equal(manifest.host_permissions, undefined);
   assert.equal(manifest.content_scripts, undefined);
-  assert.deepEqual(manifest.background, { service_worker: 'src/background.js', type: 'module' });
   assert.equal(manifest.minimum_chrome_version, '127');
   assert.equal(manifest.manifest_version, 3);
 });

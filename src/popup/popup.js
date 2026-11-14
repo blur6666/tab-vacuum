@@ -10,6 +10,7 @@
 import { queryAllTabs, openReviewPage } from '../lib/chrome-tabs.js';
 import { hasTabsPermission } from '../lib/permissions.js';
 import { planCleanup, MissingTabsPermissionError } from '../lib/scan.js';
+import { closeTabs } from '../lib/execute.js';
 import { planVacuum, vacuumPreview } from '../lib/vacuum.js';
 import { planToMarkdown, prettyUrl } from '../lib/format.js';
 import { DEBUG_LOG_SCANNED_TABS } from '../lib/config.js';
@@ -66,17 +67,7 @@ helpBtn?.addEventListener('blur', syncHelpVisibility);
 hasTabsPermission().then(async (granted) => {
   if (!granted) return;
   try {
-    const state = await chrome.runtime.sendMessage({ type: 'vacuum-state' });
-    if (state.status === 'running') {
-      scanButton.disabled = true;
-      vacuumButton.disabled = true;
-      setStatus('Scanning and vacuuming…');
-      await waitForVacuum();
-    } else if (state.status === 'complete' || state.status === 'error') {
-      await showVacuumState(state);
-    } else {
-      await refreshVacuumState();
-    }
+    await refreshVacuumState();
   } catch { }
 });
 
@@ -107,7 +98,9 @@ vacuumButton.addEventListener('click', async () => {
       denied();
       return;
     }
-    await showVacuumState(await chrome.runtime.sendMessage({ type: 'vacuum-start' }));
+    const vacuumPlan = planVacuum(await queryAllTabs());
+    const outcome = await closeTabs(vacuumPlan.plan, vacuumPlan.closableIds);
+    await showVacuumResult({ outcome, rows: vacuumPlan.rows });
   } catch (error) {
     showError(error);
     vacuumButton.disabled = false;
@@ -116,24 +109,8 @@ vacuumButton.addEventListener('click', async () => {
   }
 });
 
-async function waitForVacuum() {
-  let state;
-  do {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    state = await chrome.runtime.sendMessage({ type: 'vacuum-state' });
-  } while (state.status === 'running');
-  await showVacuumState(state);
-}
-
-async function showVacuumState(state) {
+async function showVacuumResult({ outcome, rows }) {
   scanButton.disabled = false;
-  if (state.status === 'error') {
-    showError(new Error(state.error));
-    vacuumButton.disabled = false;
-    return;
-  }
-  if (state.status !== 'complete') return;
-  const { outcome, rows } = state;
   results.classList.toggle('hidden', true);
   // Refresh only the button state; the scan breakdown belongs to Scan.
   try {

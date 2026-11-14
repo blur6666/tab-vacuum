@@ -72,7 +72,7 @@ hasTabsPermission().then(async (granted) => {
   if (!granted) return;
   try {
     await refreshVacuumState();
-  } catch {}
+  } catch { }
 });
 
 scanButton.addEventListener('click', () => {
@@ -115,11 +115,9 @@ vacuumButton.addEventListener('click', async () => {
       return;
     }
 
-    // Execute immediately without confirmation
     await closeTabs(result.plan, result.closableIds);
     setStatus('');
 
-    // Show the updated scan results after cleanup
     if (results.classList.contains('hidden')) await refreshVacuumState();
     else await scan();
   } catch (error) {
@@ -133,9 +131,6 @@ vacuumButton.addEventListener('click', async () => {
   }
 });
 
-/**
- * Vacuum 'em all! is enabled iff a fresh scan still finds something to close.
- */
 async function refreshVacuumState() {
   const tabs = await queryAllTabs();
   vacuumButton.disabled = planVacuum(tabs).totalClosable === 0;
@@ -186,7 +181,7 @@ function render(plan) {
   $('duplicate-count').textContent = String(plan.duplicateGroups.length);
   $('duplicate-summary').textContent = plan.duplicateGroups.length
     ? `${plan.duplicateGroups.length} group${plan.duplicateGroups.length === 1 ? '' : 's'}` +
-      ` · ${duplicateTabs} tabs`
+    ` · ${duplicateTabs} tabs`
     : 'No duplicate tabs found.';
 
   const hasAnything =
@@ -235,7 +230,7 @@ copyButton.addEventListener('click', async () => {
 function denied() {
   setStatus(
     'Tab Vacuum needs the "tabs" permission to read tab URLs. Nothing else is accessed. ' +
-      'It looks like it was revoked — re-enable it on the extension\'s Details page.',
+    'It looks like it was revoked — re-enable it on the extension\'s Details page.',
   );
 }
 

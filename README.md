@@ -17,6 +17,7 @@ Install here: https://chromewebstore.google.com/detail/tab-vacuum/fljnkehfhjfjoa
 - **Only tabs up for deletion** hides context-only rows; untick it to see all scanned tabs.
 - **Show group names** requests optional access to tab-group labels and colours.
 - **Copy report** copies URLs and titles to your clipboard, including hidden context rows.
+- The popup quick guide follows hover and keyboard focus and is exposed to assistive technology only while displayed.
 
 ## Cleanup rules
 

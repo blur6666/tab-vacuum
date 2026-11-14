@@ -7,7 +7,6 @@ main {
   flex-direction: column;
   gap: 10px;
   padding: 12px;
-  min-height: 100px;
 }
 
 header {
@@ -55,26 +54,18 @@ header {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 8px 10px;
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: 6px;
   font-size: 11.5px;
   line-height: 1.4;
   box-shadow: 0 4px 14px color-mix(in srgb, #000000 25%, transparent);
   z-index: 100;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transform: translateY(-4px);
-  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
 }
 
 .help-container:hover .help-popover,
 .help-container:focus-within .help-popover {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transform: translateY(0);
+  display: flex;
 }
 
 .help-title {
@@ -165,26 +156,6 @@ header {
 .detail-list li {
   margin-bottom: 2px;
 }
-
-/**
- * The armed confirm has to show what it will close (CLAUDE.md rule 2), so it
- * does not keep .detail-list's 150px cap — that cap is for the protected-tabs
- * disclosure, where scrolling past a few rows costs nothing.
- *
- * Measured, not guessed: at 150px a 33-tab confirm showed 7 rows and sliced the
- * 7th in half, while 348px of the popup sat empty below it. Chrome caps the
- * popup at 600px; the header and button row take ~100, so this claims most of
- * what is left and still leaves the button on screen.
- */
-#vacuum-list {
-  max-height: 430px;
-  /* Without a border the cut-off row reads as clipping rather than "more
-     below" — there is no scrollbar gutter in a popup this narrow. */
-  border-left: 2px solid color-mix(in srgb, currentColor 15%, transparent);
-  margin-top: 6px;
-}
-
-
 
 button.secondary {
   border-color: color-mix(var(--muted) 50%, transparent);

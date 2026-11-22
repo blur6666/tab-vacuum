@@ -25,3 +25,7 @@ Run destructive checks only in a disposable browser profile with Tab Vacuum load
 ## [UI-01] Scan and cleanup controls stay distinct
 - **Invariant:** Popup Scan only reports; popup Vacuum is the one-click cleanup path, preserves the active tab beneath the popup, and shows closed/skipped outcomes without the scan breakdown; Review close actions require a second click within three seconds.
 - **Smoke Check:** With an eligible background candidate open, click Scan and confirm it remains open; click Vacuum and confirm the popup remains open with a closed/skipped result. In Review, click a close action once and confirm nothing closes until the second click.
+
+## [AUTO-01] Scheduled auto-vacuum is opt-in and keeps every window's front tab
+- **Invariant:** Auto-vacuum is off until the popup checkbox is ticked; it is exactly one alarm (`auto-vacuum`, 15-minute period, first run one period after enabling) whose existence is the setting. Each run closes the Vacuum selection minus the active tab of every window, through `closeTabs()` revalidation; redacted URLs close nothing.
+- **Smoke Check:** In a disposable profile, tick the checkbox and confirm the popup shows a next-run time; reopen the popup and confirm it is still ticked. In the service worker console run `chrome.alarms.create('auto-vacuum', {delayInMinutes: 0.1, periodInMinutes: 15})` with a background new tab and an active new tab in another window: after the alarm fires the background one is gone and the active one remains. Untick and confirm `chrome.alarms.getAll()` is empty.

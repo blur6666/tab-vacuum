@@ -125,3 +125,10 @@ export const TRACKING_PARAMS = [
 /** Conservative defaults: `www.example.com` !== `example.com`, `http` !== `https`. */
 export const STRIP_WWW = false;
 export const IGNORE_SCHEME = false;
+
+/**
+ * How often the optional auto-vacuum runs, when it is switched on in the
+ * popup. Chrome clamps alarm periods below 30 seconds, so anything from 1 up
+ * is honoured as written.
+ */
+export const AUTO_VACUUM_PERIOD_MINUTES = 15;

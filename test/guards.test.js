@@ -100,7 +100,12 @@ test('the manifest asks for tabs, and tabGroups only optionally', () => {
   //
   // What still matters is that nothing ELSE creeps in: host permissions and
   // content scripts are what turn a tab lister into a page reader.
-  assert.deepEqual(manifest.permissions, ['tabs']);
+  //
+  // `alarms` drives the opt-in auto-vacuum. It carries no install warning, and
+  // the alarm's existence doubles as the on/off setting, so it is what keeps
+  // `storage` out.
+  assert.deepEqual(manifest.permissions, ['tabs', 'alarms']);
+  assert.equal(manifest.permissions.includes('storage'), false);
   assert.deepEqual(manifest.optional_permissions, ['tabGroups']);
   assert.equal(manifest.host_permissions, undefined);
   assert.equal(manifest.content_scripts, undefined);

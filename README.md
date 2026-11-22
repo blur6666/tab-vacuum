@@ -11,6 +11,7 @@ Install here: https://chromewebstore.google.com/detail/tab-vacuum/fljnkehfhjfjoa
 
 - **Scan my tabs** previews cleanup candidates without closing anything.
 - **Vacuum 'em all!** immediately closes eligible new tabs, system tabs, and duplicate non-keepers, then keeps the popup open to list what closed or was skipped. The active tab beneath the popup stays open so the results remain visible.
+- **Vacuum 'em all every 15 min** (popup checkbox, off by default) runs the same cleanup in the background on a timer. It keeps the active tab of every window, since nobody clicked and you may be using any of them. The first run is 15 minutes after ticking it; untick to stop. The browser may clear the timer on restart or extension update, in which case the box reads unticked again.
 - **Review & clean →** opens the full report for selective cleanup.
 - **Close selected** and **Kill 'Em All** require a second click within three seconds.
 - **Kill 'Em All** keeps one copy per duplicate group and excludes system tabs.
@@ -38,6 +39,7 @@ Restore closed tabs with the browser’s **Ctrl+Shift+T**.
 ## Privacy and permissions
 
 - **`tabs`** exposes tab URLs and titles; Chromium labels it “Read your browsing history.”
+- **`alarms`** schedules the optional auto-vacuum; it shows no install warning. The alarm's existence is the on/off setting, so nothing is stored.
 - **`tabGroups`** is optional and only adds group names and colours.
 - No telemetry, network requests, page-content access, or persistent history.
 - Scanning checks the required `tabs` permission each time; revoking it prevents scans.

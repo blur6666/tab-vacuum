@@ -27,6 +27,7 @@
             <ul class="help-list">
               <li><strong>Scan my tabs for junks and dupes:</strong> Inspect &amp; review duplicates, junk, and system tabs — closes nothing on its own.</li>
               <li><strong>Vacuum 'em all!:</strong> Instant 1-click cleanup that scans and closes duplicates, junk, and system tabs, then keeps this popup open to list what closed or was skipped. The tab behind the popup stays open.</li>
+              <li><strong>Vacuum 'em all every 15 min:</strong> Runs the same cleanup in the background on a timer, keeping the tab you are looking at in every window. Untick to stop.</li>
             </ul>
           </div>
         </div>
@@ -36,6 +37,12 @@
         <button id="scan" class="primary" type="button">Scan my tabs for junks and dupes</button>
         <button id="vacuum" class="danger-solid" type="button">Vacuum 'em all!</button>
       </div>
+
+      <label class="auto-vacuum">
+        <input id="auto-vacuum" type="checkbox" />
+        <span>Vacuum 'em all every 15 min</span>
+      </label>
+      <p id="auto-vacuum-status" class="muted small"></p>
 
       <p id="status" class="muted status" role="status" aria-live="polite"></p>
 

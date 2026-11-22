@@ -71,3 +71,27 @@ export function vacuumPreview(plan) {
 function row(tab) {
   return { id: tab.id, url: tab.url, title: tab.title };
 }
+
+/**
+ * What the scheduled auto-vacuum closes: the same selection as the button,
+ * minus the front tab of every window.
+ *
+ * The button keeps only the tab beneath the popup, because the person pressing
+ * it is looking at that tab. A timer has no such anchor — it fires while you
+ * are typing into a fresh new tab or reading Settings — so every window's
+ * active tab is the one you might be using right now, and none of them is
+ * taken by a click you did not make.
+ *
+ * Pure — does not touch the `chrome` global.
+ *
+ * @param {Array<object>} tabs   chrome.tabs.Tab-shaped objects
+ * @returns {{closableIds: number[], totalClosable: number, rows: Array<object>, plan: object}}
+ */
+export function planAutoVacuum(tabs) {
+  const vacuum = planVacuum(tabs);
+  const activeIds = new Set(tabs.filter((tab) => tab.active).map((tab) => tab.id));
+  const rows = vacuum.rows.filter((row) => !activeIds.has(row.id));
+  const closableIds = rows.map((row) => row.id);
+
+  return { ...vacuum, rows, closableIds, totalClosable: closableIds.length };
+}

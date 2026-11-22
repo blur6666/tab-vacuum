@@ -14,6 +14,7 @@ import { closeTabs } from '../lib/execute.js';
 import { planVacuum, vacuumPreview } from '../lib/vacuum.js';
 import { planToMarkdown, prettyUrl } from '../lib/format.js';
 import { DEBUG_LOG_SCANNED_TABS } from '../lib/config.js';
+import { getAutoVacuumSchedule, setAutoVacuumEnabled } from '../lib/schedule.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -37,6 +38,8 @@ const openReview = $('open-review');
 const copyButton = $('copy');
 const helpBtn = $('help-btn');
 const helpPopover = $('help-popover');
+const autoVacuumToggle = $('auto-vacuum');
+const autoVacuumStatus = $('auto-vacuum-status');
 
 let lastPlan = null;
 
@@ -70,6 +73,32 @@ hasTabsPermission().then(async (granted) => {
     await refreshVacuumState();
   } catch { }
 });
+
+// The switch mirrors whether the alarm exists — there is no saved setting.
+getAutoVacuumSchedule().then(renderAutoVacuum).catch((error) => {
+  console.warn('Could not read the auto-vacuum schedule', error);
+});
+
+autoVacuumToggle.addEventListener('change', async () => {
+  const wanted = autoVacuumToggle.checked;
+  autoVacuumToggle.disabled = true;
+  try {
+    renderAutoVacuum(await setAutoVacuumEnabled(wanted));
+  } catch (error) {
+    autoVacuumToggle.checked = !wanted;
+    showError(error);
+  } finally {
+    autoVacuumToggle.disabled = false;
+  }
+});
+
+function renderAutoVacuum({ enabled, nextRun }) {
+  autoVacuumToggle.checked = enabled;
+  autoVacuumStatus.textContent = enabled && nextRun !== null
+    ? `Next run at ${new Date(nextRun).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. ` +
+      'Keeps the front tab of every window.'
+    : '';
+}
 
 scanButton.addEventListener('click', () => {
   const granted = hasTabsPermission();

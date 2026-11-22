@@ -64,6 +64,7 @@ English
 | Permission | Type | Justification |
 |------------|------|---------------|
 | `tabs` | permissions | Required to read tab URLs, titles, window IDs, and statuses (pinned, audible) across open windows to detect duplicate and abandoned tabs, and to close tabs selected by the user. No page content is read, and no tab data is persisted or transmitted off-device. |
+| `alarms` | permissions | Schedules the opt-in "Vacuum 'em all every 15 min" cleanup, which the user switches on and off from the popup. The alarm's existence is the setting, so no storage permission is needed. |
 | `tabGroups` | optional_permissions | Optional cosmetic permission used solely to read and display custom tab group titles and colors in the review results. Tab deduplication functions fully even if this permission is declined. |
 
 

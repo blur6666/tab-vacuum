@@ -37,12 +37,12 @@ Restore closed tabs with the browser’s **Ctrl+Shift+T**.
 
 ## Auto-vacuum
 
-A switch in the popup, off by default. While on, about every 5 minutes the extension silently runs the same cleanup as **Vacuum 'em all!** — same protections, same close-time revalidation, no feedback. It skips the run entirely while you are idle or the screen is locked, and never closes the tab you are looking at.
+A switch in the popup, off by default. While on, about every 5 minutes the extension silently runs the same cleanup as **Vacuum 'em all!** — same protections, same close-time revalidation, no feedback. It skips the run entirely while no browser window has focus, and never closes the tab you are looking at.
 
 ## Privacy and permissions
 
 - **`tabs`** exposes tab URLs and titles; Chromium labels it “Read your browsing history.”
-- **`alarms`**, **`idle`** and **`storage`** run Auto-vacuum: a timer, an away-from-keyboard check, and the one on/off flag. None shows an install warning.
+- **`alarms`** and **`storage`** run Auto-vacuum: a timer and the one on/off flag. None shows an install warning.
 - **`tabGroups`** is optional and only adds group names and colours.
 - No telemetry, network requests, page-content access, or persistent history.
 - Scanning checks the required `tabs` permission each time; revoking it prevents scans.

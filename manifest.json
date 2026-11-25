@@ -4,7 +4,7 @@
   "version": "1.0.3",
   "description": "Find unused new-tab pages and duplicate tabs across all your windows, then clean them up.",
   "minimum_chrome_version": "127",
-  "permissions": ["tabs", "alarms", "idle", "storage"],
+  "permissions": ["tabs", "alarms", "storage"],
   "background": {
     "service_worker": "src/background.js",
     "type": "module"

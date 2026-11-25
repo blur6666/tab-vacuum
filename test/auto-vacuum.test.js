@@ -16,7 +16,7 @@ function tab(id, overrides = {}) {
   };
 }
 
-function deps(tabs, { idle = 'active', activeId = null } = {}) {
+function deps(tabs, { active = true, activeId = null } = {}) {
   const closed = [];
   let queried = 0;
   return {
@@ -25,7 +25,7 @@ function deps(tabs, { idle = 'active', activeId = null } = {}) {
     deps: {
       queryTabs: async () => { queried += 1; return tabs; },
       snapshot: async () => tabs,
-      idleState: async () => idle,
+      isActive: async () => active,
       getActiveTabId: async () => activeId,
       closer: async (ids) => { closed.push(...ids); },
     },
@@ -35,13 +35,11 @@ function deps(tabs, { idle = 'active', activeId = null } = {}) {
 const blank = (id, o) => tab(id, { url: 'chrome://newtab/', ...o });
 const filler = tab(1, { url: 'https://filler.example/' });
 
-test('does no work at all while the user is idle or locked', async () => {
-  for (const idle of ['idle', 'locked']) {
-    const d = deps([filler, blank(2), blank(3)], { idle });
-    assert.deepEqual(await runAutoVacuum(d.deps), { ran: false, closed: 0 });
-    assert.equal(d.queried(), 0, 'tabs are not even read');
-    assert.deepEqual(d.closed, []);
-  }
+test('does no work at all while the browser is in the background', async () => {
+  const d = deps([filler, blank(2), blank(3)], { active: false });
+  assert.deepEqual(await runAutoVacuum(d.deps), { ran: false, closed: 0 });
+  assert.equal(d.queried(), 0, 'tabs are not even read');
+  assert.deepEqual(d.closed, []);
 });
 
 test('while active, closes what Vacuum would close', async () => {

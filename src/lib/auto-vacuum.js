@@ -6,7 +6,7 @@
  * here unchanged. What differs is when it runs and what it reports — it runs
  * only while the user is active, and it reports nothing.
  *
- * `idleState`, `getActiveTabId`, `snapshot` and `closer` are injected so the
+ * `isActive`, `getActiveTabId`, `snapshot` and `closer` are injected so the
  * policy is testable with no browser, like closeTabs() itself.
  */
 
@@ -17,22 +17,19 @@ import { planVacuum } from './vacuum.js';
 /** How often the alarm fires. Not precise — the browser may delay it. */
 export const AUTO_VACUUM_PERIOD_MINUTES = 5;
 
-/** Seconds without input before the browser counts the user as idle. */
-export const IDLE_DETECTION_SECONDS = 60;
-
 /**
  * @param {{
  *   queryTabs: () => Promise<object[]>,
- *   idleState: () => Promise<'active'|'idle'|'locked'>,
+ *   isActive: () => Promise<boolean>,
  *   getActiveTabId: () => Promise<number|null>,
  *   closer?: Function,
  *   snapshot?: Function,
  * }} deps
  * @returns {Promise<{ran: boolean, closed: number}>}
  */
-export async function runAutoVacuum({ queryTabs, idleState, getActiveTabId, closer, snapshot }) {
-  // Idle or locked: nobody is accumulating clutter, so do no work at all.
-  if ((await idleState()) !== 'active') return { ran: false, closed: 0 };
+export async function runAutoVacuum({ queryTabs, isActive, getActiveTabId, closer, snapshot }) {
+  // Browser in the background: nobody is accumulating clutter, so do no work.
+  if (!(await isActive())) return { ran: false, closed: 0 };
 
   try {
     const plan = planVacuum(await queryTabs());

@@ -10,7 +10,7 @@ The second is **Vacuum 'em all!** in the popup, which immediately closes unused 
 
 **A rule that closes a tab has to be decidable from its URL.** Page titles and path guesses are not evidence: `/\b404\b/` against a title closes an article about a 404, and `/checkout/complete` closes the order confirmation. Both shipped once, in a `junk-rules.js` that no longer exists — see the commit that removed it. Detecting a real error page needs the response status, which needs host permissions this extension does not take, so it is not a heuristic to sharpen but a feature to decline.
 
-Auto-vacuum is a third close path: a switch in the popup (off by default, stored in `chrome.storage.local`) makes the service worker `src/background.js` run `runAutoVacuum()` from `src/lib/auto-vacuum.js` on a 5-minute alarm. It is `planVacuum()` plus `closeTabs()` exactly as the popup button uses them, with no UI and no feedback, only while `chrome.idle` says the user is active, and it keeps the active tab of the focused window.
+Auto-vacuum is a third close path: a switch in the popup (off by default, stored in `chrome.storage.local`) makes the service worker `src/background.js` run `runAutoVacuum()` from `src/lib/auto-vacuum.js` on a 5-minute alarm. It is `planVacuum()` plus `closeTabs()` exactly as the popup button uses them, with no UI and no feedback, only while a browser window has focus (no `idle` permission, on purpose), and it keeps the active tab of the focused window.
 
 ## Rules
 
@@ -53,7 +53,7 @@ When a run covers several tasks, that is several commits, each holding one task'
 
 ## Lessons learned
 
-- **`tabs` is the only permission that reads anything.** `manifest.json` declares `"permissions": ["tabs", "alarms", "idle", "storage"]`; the last three were an explicit decision for Auto-vacuum (timer, idle check, one boolean flag) and carry no install warning. No further `storage` use beyond that flag, no host permissions, `<all_urls>` or `content_scripts` without an explicit decision.
+- **`tabs` is the only permission that reads anything.** `manifest.json` declares `"permissions": ["tabs", "alarms", "storage"]`; the last two were an explicit decision for Auto-vacuum (timer, one boolean flag) and carry no install warning. No further `storage` use beyond that flag, no host permissions, `<all_urls>` or `content_scripts` without an explicit decision.
 - **`tabGroups` was that explicit decision, and it is optional.** It carries its own warning — *"View and manage your tab groups"* — and buys only cosmetics: a heading reading "Work" in the group's colour instead of "group 1". Per-group deduplication reads `tab.groupId`, which is available on every `Tab` with no permission at all. Declining costs labels and nothing else. `chrome.tabGroups.query({})` returns `{id, title, color, collapsed, windowId}`.
 - **Without `tabs`, `tab.url` is `undefined`, not `''`.** Unguarded, every tab looks like a blank new tab and the plan becomes "close everything". `planCleanup()` throws `MissingTabsPermissionError` — never soften that into a default or an empty result. Most dangerous path in the codebase.
 - **`chrome.permissions.request()` throws for non-optional permissions.** `tabs` is required, so `src/lib/permissions.js` calls `contains()` instead. `tabGroups` *is* optional, so `requestTabGroupsPermission()` is the real call — and `review.js` has it as the **first statement of the click handler with no `await` before it**. An intervening await consumes the user gesture and the request fails.

@@ -1,7 +1,7 @@
 /**
  * Service worker. Its only job is Auto-vacuum: while the toggle is on, an
  * alarm fires every few minutes and runs the same cleanup as the popup's
- * "Vacuum 'em all!", silently. While the user is idle it does nothing.
+ * "Vacuum 'em all!", silently. While no browser window has focus it does nothing.
  *
  * The alarm exists only while the toggle is on, so with it off the worker is
  * never even woken.
@@ -9,13 +9,19 @@
 
 import { getActiveTabId, queryAllTabs } from './lib/chrome-tabs.js';
 import { getAutoVacuum, changesAutoVacuum } from './lib/settings.js';
-import {
-  AUTO_VACUUM_PERIOD_MINUTES,
-  IDLE_DETECTION_SECONDS,
-  runAutoVacuum,
-} from './lib/auto-vacuum.js';
+import { AUTO_VACUUM_PERIOD_MINUTES, runAutoVacuum } from './lib/auto-vacuum.js';
 
 const ALARM = 'auto-vacuum';
+
+/**
+ * "Not idle" without the `idle` permission: some browser window has focus.
+ * Coarser than real idle detection (a focused window you walked away from
+ * still counts), but it needs no permission.
+ */
+async function browserHasFocus() {
+  const windows = await chrome.windows.getAll({ windowTypes: ['normal'] });
+  return windows.some((win) => win.focused);
+}
 
 async function syncAlarm() {
   const existing = await chrome.alarms.get(ALARM);
@@ -44,7 +50,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   try {
     await runAutoVacuum({
       queryTabs: queryAllTabs,
-      idleState: () => chrome.idle.queryState(IDLE_DETECTION_SECONDS),
+      isActive: browserHasFocus,
       getActiveTabId,
     });
   } catch (error) {

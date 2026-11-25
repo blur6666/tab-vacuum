@@ -45,7 +45,6 @@ The **⧉ Copy report** button copies a plain-text report of the scan — includ
 - `tabGroups` — optional. Displays tab-group names and colours.
 
 - `alarms` — required. Wakes the extension about every 5 minutes while Auto-vacuum is on.
-- `idle` — required. Lets Auto-vacuum skip its run while you are away from the keyboard.
 - `storage` — required. Remembers whether Auto-vacuum is on. Nothing else is stored.
 
 No host permissions. No content scripts. No remote code.

@@ -104,6 +104,14 @@ export const CONFIRM_REVERT_MS = 3000;
  */
 export const DEBUG_LOG_SCANNED_TABS = false;
 
+/**
+ * Auto-vacuum writes everything it does to the background worker's console:
+ * each tick, alarm changes, and the URL and title of every tab it closes or
+ * refuses. Console only, nothing persisted. TEMPORARY — turn off before a store
+ * build, since it logs URLs.
+ */
+export const DEBUG_LOG_AUTO_VACUUM = true;
+
 /** Incognito tabs are only visible at all if the extension is enabled in incognito. */
 export const INCLUDE_INCOGNITO = false;
 

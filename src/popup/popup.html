@@ -27,6 +27,7 @@
             <ul class="help-list">
               <li><strong>Scan my tabs for junks and dupes:</strong> Inspect &amp; review duplicates, junk, and system tabs — closes nothing on its own.</li>
               <li><strong>Vacuum 'em all!:</strong> Instant 1-click cleanup that scans and closes duplicates, junk, and system tabs, then keeps this popup open to list what closed or was skipped. The tab behind the popup stays open.</li>
+              <li><strong>Auto-vacuum:</strong> When on, runs Vacuum silently about every 5 minutes while the browser is in use. Does nothing while it is in the background.</li>
             </ul>
           </div>
         </div>
@@ -36,6 +37,11 @@
         <button id="scan" class="primary" type="button">Scan my tabs for junks and dupes</button>
         <button id="vacuum" class="danger-solid" type="button">Vacuum 'em all!</button>
       </div>
+
+      <label class="toggle" for="auto-vacuum" title="Every 5 minutes, while you are active, silently runs Vacuum 'em all!">
+        <input id="auto-vacuum" type="checkbox" />
+        <span>Auto-vacuum every 5 minutes</span>
+      </label>
 
       <p id="status" class="muted status" role="status" aria-live="polite"></p>
 

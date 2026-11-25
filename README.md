@@ -35,9 +35,14 @@ Install here: https://chromewebstore.google.com/detail/tab-vacuum/fljnkehfhjfjoa
 **Limitation:** a used tab navigated back to a new-tab page looks like a fresh one.
 Restore closed tabs with the browser’s **Ctrl+Shift+T**.
 
+## Auto-vacuum
+
+A switch in the popup, off by default. While on, about every 5 minutes the extension silently runs the same cleanup as **Vacuum 'em all!** — same protections, same close-time revalidation, no feedback. It skips the run entirely while no browser window has focus, and never closes the tab you are looking at.
+
 ## Privacy and permissions
 
 - **`tabs`** exposes tab URLs and titles; Chromium labels it “Read your browsing history.”
+- **`alarms`** and **`storage`** run Auto-vacuum: a timer and the one on/off flag. None shows an install warning.
 - **`tabGroups`** is optional and only adds group names and colours.
 - No telemetry, network requests, page-content access, or persistent history.
 - Scanning checks the required `tabs` permission each time; revoking it prevents scans.

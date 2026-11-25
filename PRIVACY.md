@@ -21,7 +21,7 @@ This requires the `tabs` permission, which Chrome describes as *"Read your brows
 
 It is held in memory for the duration of the scan and used to render the results on screen. It is never written to disk, never placed in browser storage, never logged, and never sent anywhere.
 
-The extension declares no `storage` permission and saves no tab history to disk. Cleanup runs in the popup, and its results are discarded when the popup closes. The review page re-runs its scan when it loads rather than receiving a saved copy.
+The extension saves no tab history to disk. The only thing it stores is one on/off flag for Auto-vacuum, in `chrome.storage.local`. Cleanup runs in the popup, and its results are discarded when the popup closes. The review page re-runs its scan when it loads rather than receiving a saved copy.
 
 ## Network access
 
@@ -44,7 +44,10 @@ The **⧉ Copy report** button copies a plain-text report of the scan — includ
 - `tabs` — required. Reads tab URLs and titles so duplicates and unused new tabs can be identified.
 - `tabGroups` — optional. Displays tab-group names and colours.
 
-No host permissions. No content scripts. No `storage`. No remote code.
+- `alarms` — required. Wakes the extension about every 5 minutes while Auto-vacuum is on.
+- `storage` — required. Remembers whether Auto-vacuum is on. Nothing else is stored.
+
+No host permissions. No content scripts. No remote code.
 
 ## Children
 

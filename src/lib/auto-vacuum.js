@@ -42,7 +42,12 @@ export async function runAutoVacuum({ queryTabs, isActive, getActiveTabId, close
       ...(closer && { closer }),
       ...(snapshot && { snapshot }),
     });
-    return { ran: true, closed: outcome.closed };
+    return {
+      ran: true,
+      closed: outcome.closed,
+      // Reasons only, never URLs or titles: this ends up in a console log.
+      skipped: outcome.skipped.map(({ reason }) => reason),
+    };
   } catch (error) {
     // Revoked `tabs` permission: nothing to do, and nobody to tell.
     if (error instanceof MissingTabsPermissionError) return { ran: false, closed: 0 };

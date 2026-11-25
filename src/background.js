@@ -48,11 +48,17 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (!(await getAutoVacuum())) return syncAlarm();
 
   try {
-    await runAutoVacuum({
+    const result = await runAutoVacuum({
       queryTabs: queryAllTabs,
       isActive: browserHasFocus,
       getActiveTabId,
     });
+    // One line per tick, counts and reasons only. Worker console, not persisted.
+    console.log(
+      `Tab Vacuum auto-vacuum ${new Date().toLocaleTimeString()}:`,
+      result.ran ? `closed ${result.closed}` : 'skipped (browser in background)',
+      result.skipped?.length ? `· refused: ${result.skipped.join(', ')}` : '',
+    );
   } catch (error) {
     console.warn('Tab Vacuum: auto-vacuum failed', error);
   }

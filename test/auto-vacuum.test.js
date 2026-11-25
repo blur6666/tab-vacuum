@@ -37,7 +37,7 @@ const filler = tab(1, { url: 'https://filler.example/' });
 
 test('does no work at all while the browser is in the background', async () => {
   const d = deps([filler, blank(2), blank(3)], { active: false });
-  assert.deepEqual(await runAutoVacuum(d.deps), { ran: false, closed: 0 });
+  assert.deepEqual(await runAutoVacuum(d.deps), { ran: false, closed: 0, why: 'browser in background' });
   assert.equal(d.queried(), 0, 'tabs are not even read');
   assert.deepEqual(d.closed, []);
 });
@@ -63,6 +63,6 @@ test('protections still hold: pinned and audible duplicates stay', async () => {
 
 test('redacted urls (no tabs permission) do nothing, silently', async () => {
   const d = deps([{ ...filler, url: undefined }, { ...blank(2), url: undefined }]);
-  assert.deepEqual(await runAutoVacuum(d.deps), { ran: false, closed: 0 });
+  assert.deepEqual(await runAutoVacuum(d.deps), { ran: false, closed: 0, why: 'tabs permission missing' });
   assert.deepEqual(d.closed, []);
 });

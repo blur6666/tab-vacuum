@@ -60,7 +60,7 @@ test('Vacuum keeps its active anchor tab open and renders the close outcome', as
     'scan', 'vacuum', 'vacuum-outcome', 'vacuum-outcome-list', 'status', 'results',
     'toggle-protected', 'protected-list', 'open-review', 'copy', 'help-btn', 'help-popover',
     'totals', 'new-tab-count', 'new-tab-windows', 'system-tab-count', 'system-tab-summary',
-    'duplicate-count', 'duplicate-summary',
+    'duplicate-count', 'duplicate-summary', 'auto-vacuum',
   ]) {
     elements.set(id, new Element(id));
   }
@@ -82,6 +82,7 @@ test('Vacuum keeps its active anchor tab open and renders the close outcome', as
   const tabQueries = [];
   globalThis.chrome = {
     permissions: { contains: async () => true },
+    storage: { local: { get: async (d) => d, set: async () => {} } },
     tabs: {
       query: async (query) => {
         tabQueries.push(query);

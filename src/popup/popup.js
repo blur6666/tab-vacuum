@@ -14,6 +14,7 @@ import { closeTabs } from '../lib/execute.js';
 import { planVacuum, vacuumPreview } from '../lib/vacuum.js';
 import { planToMarkdown, prettyUrl } from '../lib/format.js';
 import { DEBUG_LOG_SCANNED_TABS } from '../lib/config.js';
+import { getAutoVacuum, setAutoVacuum } from '../lib/settings.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -38,7 +39,18 @@ const copyButton = $('copy');
 const helpBtn = $('help-btn');
 const helpPopover = $('help-popover');
 
+const autoVacuumToggle = $('auto-vacuum');
+
 let lastPlan = null;
+
+// Auto-vacuum switch. The background worker watches storage, so writing the
+// flag is all the popup has to do.
+getAutoVacuum()
+  .then((on) => { autoVacuumToggle.checked = on; })
+  .catch(() => { });
+autoVacuumToggle.addEventListener('change', () => {
+  setAutoVacuum(autoVacuumToggle.checked).catch(showError);
+});
 
 scanButton.textContent = SCAN;
 scanButton.title = SCAN_TOOLTIP;

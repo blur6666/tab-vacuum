@@ -35,6 +35,8 @@ export async function runAutoVacuum({ queryTabs, isActive, getActiveTabId, close
     const plan = planVacuum(await queryTabs());
     if (plan.totalClosable === 0) return { ran: true, closed: 0 };
 
+    const byId = new Map(plan.rows.map((row) => [row.id, row]));
+
     // With no popup there is no tab to keep alive for display, but the tab
     // the user is looking at right now should not vanish under them either.
     const outcome = await closeTabs(plan.plan, plan.closableIds, {
@@ -45,8 +47,12 @@ export async function runAutoVacuum({ queryTabs, isActive, getActiveTabId, close
     return {
       ran: true,
       closed: outcome.closed,
-      // Reasons only, never URLs or titles: this ends up in a console log.
       skipped: outcome.skipped.map(({ reason }) => reason),
+      // Per-tab detail, for the debug log only.
+      details: {
+        closed: outcome.closedIds.map((id) => byId.get(id) ?? { id }),
+        refused: outcome.skipped.map(({ id, reason }) => ({ ...(byId.get(id) ?? { id }), reason })),
+      },
     };
   } catch (error) {
     // Revoked `tabs` permission: nothing to do, and nobody to tell.

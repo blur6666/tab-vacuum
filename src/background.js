@@ -10,8 +10,13 @@
 import { getActiveTabId, queryAllTabs } from './lib/chrome-tabs.js';
 import { getAutoVacuum, changesAutoVacuum } from './lib/settings.js';
 import { AUTO_VACUUM_PERIOD_MINUTES, runAutoVacuum } from './lib/auto-vacuum.js';
+import { DEBUG_LOG_AUTO_VACUUM } from './lib/config.js';
 
 const ALARM = 'auto-vacuum';
+
+function debug(...args) {
+  if (DEBUG_LOG_AUTO_VACUUM) console.log('[Tab Vacuum]', new Date().toLocaleTimeString(), ...args);
+}
 
 /**
  * "Not idle" without the `idle` permission: some browser window has focus.
@@ -25,11 +30,17 @@ async function browserHasFocus() {
 
 async function syncAlarm() {
   const existing = await chrome.alarms.get(ALARM);
-  if (await getAutoVacuum()) {
+  const enabled = await getAutoVacuum();
+  debug('syncAlarm: switch', enabled ? 'ON' : 'OFF', '· alarm', existing ? 'exists' : 'absent');
+  if (enabled) {
     // create() restarts the clock, so leave a running alarm alone.
-    if (!existing) await chrome.alarms.create(ALARM, { periodInMinutes: AUTO_VACUUM_PERIOD_MINUTES });
+    if (!existing) {
+      await chrome.alarms.create(ALARM, { periodInMinutes: AUTO_VACUUM_PERIOD_MINUTES });
+      debug('alarm created, every', AUTO_VACUUM_PERIOD_MINUTES, 'min');
+    }
   } else if (existing) {
     await chrome.alarms.clear(ALARM);
+    debug('alarm cleared');
   }
 }
 
@@ -44,6 +55,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== ALARM) return;
+  debug('alarm fired');
   // A stale alarm must not outlive the toggle.
   if (!(await getAutoVacuum())) return syncAlarm();
 
@@ -53,12 +65,17 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       isActive: browserHasFocus,
       getActiveTabId,
     });
-    // One line per tick, counts and reasons only. Worker console, not persisted.
-    console.log(
-      `Tab Vacuum auto-vacuum ${new Date().toLocaleTimeString()}:`,
-      result.ran ? `closed ${result.closed}` : 'skipped (browser in background)',
-      result.skipped?.length ? `· refused: ${result.skipped.join(', ')}` : '',
-    );
+    if (!result.ran) {
+      debug('skipped: no browser window has focus, or tabs permission missing');
+    } else if (!result.details) {
+      debug('nothing to close');
+    } else {
+      debug(`closed ${result.closed}, refused ${result.details.refused.length}`);
+      for (const tab of result.details.closed) debug('  closed :', tab.why, '|', tab.title, '|', tab.url);
+      for (const tab of result.details.refused) {
+        debug('  refused:', tab.reason, '|', tab.why, '|', tab.title, '|', tab.url);
+      }
+    }
   } catch (error) {
     console.warn('Tab Vacuum: auto-vacuum failed', error);
   }
